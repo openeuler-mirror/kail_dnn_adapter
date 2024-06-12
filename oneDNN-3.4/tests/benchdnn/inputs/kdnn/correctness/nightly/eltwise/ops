@@ -1,0 +1,2 @@
+--alg=logistic,relu,linear,abs,exp,log,sqrt,round,square,tanh
+--batch=sizes

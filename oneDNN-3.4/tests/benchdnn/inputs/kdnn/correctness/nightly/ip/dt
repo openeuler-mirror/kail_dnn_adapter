@@ -1,0 +1,12 @@
+--dt=f32:f32:f32,f16:f16:f16,bf16:bf16:bf16,s8:s8:s32,u8:s8:s32
+--stag=abx
+--wtag=abx,any
+--dtag=abx,any
+--mb=0,1,64
+--batch=dir
+--dt=f32:f32:f32,f16:f16:f16,bf16:bf16:bf16,s8:s8:s32,u8:s8:s32
+--stag=axb
+--wtag=axb,any
+--dtag=axb,any
+--mb=0,1,64
+--batch=dir
