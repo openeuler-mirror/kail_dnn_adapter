@@ -1,0 +1,238 @@
+#用于看护代码功能，为减少门禁时长，默认注释
+#case 1
+#oh=5  oh=(ih+ph-DKH)/sh+1  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ph=5  ph=(kh-1)x(dh+1)-1
+#ic1oc13_ih14oh5kh7ph5sh3_n"conv_2d_corner"
+
+#case 2
+#oh=6  oh=(ih+ph-DKH)/sh+2
+#ph=5  ph=(kh-1)x(dh+1)-1
+#ic1oc13_ih14oh6kh7ph5sh3_n"conv_2d_corner"
+
+#case 3
+#oh=5  oh=(ih+ph-DKH)/sh+1  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ph=6  ph=(kh-1)x(dh+1)
+#ic1oc13_ih14oh5kh7ph6sh3_n"conv_2d_corner"
+
+#case 4
+#oh=6  oh=(ih+ph-DKH)/sh+2
+#ph=6  ph=(kh-1)x(dh+1)
+#ic1oc13_ih14oh6kh7ph6sh3_n"conv_2d_corner"
+
+#case 5
+#oh=5  oh=(ih+ph-DKH)/sh+1  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ph=7  ph=(kh-1)x(dh+1)+1
+#ic1oc13_ih14oh5kh7ph7sh3_n"conv_2d_corner"
+
+#case 6
+#oh=6  oh=(ih+ph-DKH)/sh+2
+#ph=7  ph=(kh-1)x(dh+1)+1
+#ic1oc13_ih14oh6kh7ph7sh3_n"conv_2d_corner"
+
+
+
+#case 7
+#oh=15  oh=(ih+ph-DKH)/sh+1  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ph=8  ph=(kh-1)x(dh+1)-1
+#ic13oc12_ih16oh15kh10ph8_n"conv_2d_corner"
+
+#case 8
+#oh=16  oh=(ih+ph-DKH)/sh+2
+#ph=8  ph=(kh-1)x(dh+1)-1
+#ic13oc12_ih16oh16kh10ph8_n"conv_2d_corner"
+
+#case 9
+#oh=16  oh=(ih+ph-DKH)/sh+1  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ph=9  ph=(kh-1)x(dh+1)
+#ic13oc12_ih16oh16kh10ph9_n"conv_2d_corner"
+
+#case 10
+#oh=17  oh=(ih+ph-DKH)/sh+2
+#ph=9  ph=(kh-1)x(dh+1)
+#ic13oc12_ih16oh17kh10ph9_n"conv_2d_corner"
+
+#case 11
+#oh=17  oh=(ih+ph-DKH)/sh+1  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ph=10  ph=(kh-1)x(dh+1)+1
+#ic13oc12_ih16oh17kh10ph10_n"conv_2d_corner"
+
+#case 12
+#oh=18  oh=(ih+ph-DKH)/sh+2
+#ph=10  ph=(kh-1)x(dh+1)+1
+#ic13oc12_ih16oh18kh10ph10_n"conv_2d_corner"
+
+
+
+#case 13
+#oh=1  oh=(ih+ph-DKH)/sh+1  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ow=1  ow=(iw+pw-DKW)/sh+2  (DKH=1+(kh-1)×(dh+1) 向下取整)边界值计算得0，这里取1
+#ph=3  ph=(kh-1)x(dh+1)-1
+#pw=4  pw=(kw-1)x(dw+1)-1
+#ic3oc4_ih2iw1oh1ow1kh5kw6ph3pw4_n"conv_2d_corner"
+
+#case 14
+#oh=2  oh=(ih+ph-DKH)/sh+2
+#ow=1  ow=(iw+pw-DKW)/sh+2
+#ph=3  ph=(kh-1)x(dh+1)-1
+#pw=4  pw=(kw-1)x(dw+1)-1
+#ic3oc4_ih2iw1oh2ow1kh5kw6ph3pw4_n"conv_2d_corner"
+
+#case 15
+#oh=2  oh=(ih+ph-DKH)/sh+1  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ow=1  ow=(iw+pw-DKW)/sh+1  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ph=4  ph=(kh-1)x(dh+1)
+#pw=5  pw=(kw-1)x(dw+1)
+#ic3oc4_ih2iw1oh2ow1kh5kw6ph4pw5_n"conv_2d_corner"
+
+#case 16
+#oh=3  oh=(ih+ph-DKH)/sh+2  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ow=2  ow=(iw+pw-DKW)/sh+2  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ph=4  ph=(kh-1)x(dh+1)
+#pw=5  pw=(kw-1)x(dw+1)
+#ic3oc4_ih2iw1oh3ow2kh5kw6ph4pw5_n"conv_2d_corner"
+
+#case 17
+#oh=3  oh=(ih+ph-DKH)/sh+1  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ow=2  ow=(iw+pw-DKW)/sh+1  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ph=5  ph=(kh-1)x(dh+1)+1
+#pw=6  pw=(kw-1)x(dw+1)+1
+#ic3oc4_ih2iw1oh3ow2kh5kw6ph5pw6_n"conv_2d_corner"
+
+#case 18
+#oh=4  oh=(ih+ph-DKH)/sh+2  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ow=3  ow=(iw+pw-DKW)/sh+2  (DKH=1+(kh-1)×(dh+1) 向下取整)
+#ph=5  ph=(kh-1)x(dh+1)+1
+#pw=6  pw=(kw-1)x(dw+1)+1
+#ic3oc4_ih2iw1oh4ow3kh5kw6ph5pw6_n"conv_2d_corner"
+
+
+
+#case 19
+#oh=5  oh=(ih + ph - DKH)/sh + 1  (DKH = 1 + (kh-1)×(dh+1) 向下取整)
+#ph=2  ph=(kh - 1)x(dh + 1)
+#g1mb1_ic1ih13_oc1oh5_kh2_sh3_ph2_dh1_n"conv_2d_corner"
+
+#case 20
+#oh=6  oh>(ih + ph - DKH)/sh + 1  (DKH = 1 + (kh-1)×(dh+1) 向下取整)
+#ph=2  ph=(kh - 1)x(dh + 1)
+#g1mb1_ic1ih13_oc1oh6_kh2_sh3_ph2_dh1_n"conv_2d_corner"
+
+#case 21
+#oh=12 oh>(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=4  ph=(kh - 1)x(dh + 1)
+#mb1_g1_ic16oc16_kh5kw5_ih11iw11_oh12ow12_sh1sw1_ph4pw4_dh0dw0n"conv_2d_corner" 
+
+#case 22
+#oh=11 oh=(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=4  ph=0<ph<=(kh-1)(dh+1)
+#mb1_g1_ic16oc16_kh5kw5_ih11iw11_oh11ow11_sh1sw1_ph4pw4_dh0dw0n"conv_2d_corner"
+
+#case 23
+#oh=4 oh>(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#g1_ic16oc16_kh5kw5_ih7iw7_oh4ow4_sh2sw2_ph3pw3_dh0dw0n"conv_2d_corner"
+
+#case 24
+#oh=3 oh=(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#g1_ic16oc16_kh5kw5_ih7iw7_oh3ow3_sh2sw2_ph3pw3_dh0dw0n"conv_2d_corner"
+
+#case 25
+#oh=201 oh>(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ic16oc16_kh3kw3_ih202iw202_oh201ow201_sh1sw1_ph0pw0_dh0dw0n"conv_2d_corner"
+
+#case 26
+#oh=200 oh=(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ic16oc16_kh3kw3_ih202iw202_oh200ow200_sh1sw1_ph0pw0_dh0dw0n"conv_2d_corner"
+
+#case 27
+#oh=57 oh>(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ow=57 ow> (iw + pw - DKW)/sh + 1 (DKW = 1 + (kw-1)×(dw+1) 向下取整)
+#ic16oc16_kh5kw5_ih111iw111_oh57ow57_sh2sw2_ph5pw5_dh0dw0n"conv_2d_corner"
+
+#case 28
+#oh=56 oh=(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ic16oc16_kh5kw5_ih111iw111_oh56ow56_sh2sw2_ph5pw5_dh0dw0n"conv_2d_corner"
+
+#case 29
+#oh=57 oh>(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=4  ph<(kh-1)(dh+1)
+#ic16oc16_kh5kw5_ih111iw111_oh57ow57_sh2sw2_ph4pw3_dh0dw0n"conv_2d_corner"
+
+#case 30
+#oh=56 oh=(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=4  ph<(kh-1)(dh+1)
+#ic16oc16_kh5kw5_ih111iw111_oh56ow56_sh2sw2_ph1pw2_dh0dw0n"conv_2d_corner"
+
+#case 31
+#oh=56 oh=(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=0  ph=(kh-1)(dh+1)
+#ic16oc16_kh5kw5_ih111iw111_oh56ow56_sh2sw2_ph0pw0_dh0dw0n"conv_2d_corner"
+
+#case 32
+#oh=9 oh>(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=0  ph=(kh-1)(dh+1)
+#ic1oc1_mb1_kh5kw5_ih31iw31_oh9ow9_sh2sw2_ph0pw0_dh3dw3n"conv_2d_corner"
+
+#case 33
+#oh=8 oh=(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=0  ph=(kh-1)(dh+1)
+#ic1oc1_mb1_kh5kw5_ih31iw31_oh8ow8_sh2sw2_ph0pw0_dh3dw3n"conv_2d_corner"
+
+#case 34
+#oh=9 oh>(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=5  ph=(kh-1)(dh+1)
+#mb1_g1_ic3oc3_kh5kw5_ih7iw7_oh9ow9_sh1sw1_ph5pw5_dh0dw0n"conv_2d_corner"
+
+#case 35
+#oh=8 oh=(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=5  ph<=(kh-1)(dh+1)
+#mb1_g1_ic3oc3_kh5kw5_ih7iw7_oh8ow8_sh1sw1_ph5pw5_dh0dw0n"conv_2d_corner"
+
+#case 36
+#oh=9 oh>(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#p=3,4  ph<(kh-1)(dh+1)
+#mb1_g1_ic3oc3_kh5kw5_ih7iw7_oh9ow9_sh1sw1_ph3pw4_dh0dw0n"conv_2d_corner"
+
+#case 37
+#oh=8 oh=(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#p=1,2  ph<(kh-1)(dh+1)
+#mb1_g1_ic3oc3_kh5kw5_ih7iw7_oh8ow8_sh1sw1_ph1pw2_dh0dw0n"conv_2d_corner"
+
+#case 38
+#oh=5 oh=(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=3  ph<(kh-1)(dh+1)
+#mb1_g1_ic16oc16_kh5kw5_ih23iw23_oh5ow5_sh5sw5_ph3pw3_dh0dw0n"conv_2d_corner"
+
+#case 39
+#oh=6 oh=(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=4  ph=(kh-1)(dh+1)
+#mb1_g1_ic16oc16_kh5kw5_ih23iw23_oh6ow6_sh5sw5_ph4pw4_dh0dw0n"conv_2d_corner"
+
+#case 40
+#oh=17 oh=(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=5  ph=(kh-1)(dh+1)
+#mb1_g1_ic16oc16_kh5kw5_ih32iw32_oh17ow17_sh2sw2_ph5pw5_dh0dw0n"conv_2d_corner"
+
+#case 41
+#oh=18 oh>(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=5  ph=(kh-1)(dh+1)
+#mb1_g1_ic16oc16_kh5kw5_ih32iw32_oh18ow18_sh2sw2_ph5pw5_dh0dw0n"conv_2d_corner"
+
+#case 42
+#oh=18 oh>(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=3  ph<(kh-1)(dh+1)
+#mb1_g1_ic16oc16_kh5kw5_ih32iw32_oh18ow18_sh2sw2_ph3pw3_dh0dw0n"conv_2d_corner"
+
+#case 43
+#oh=102 oh=(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=5  ph=(kh-1)(dh+1)                                          
+#mb1_g1_ic16oc16_kh5kw5_ih202iw202_oh102ow102_sh2sw2_ph5pw5_dh0dw0n"conv_2d_corner"
+
+#case 44
+#oh=103 oh>(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#ph=5  ph=(kh-1)(dh+1)
+#mb1_g1_ic16oc16_kh5kw5_ih202iw202_oh103ow103_sh2sw2_ph5pw5_dh0dw0n"conv_2d_corner"
+
+#case 45
+#oh=102 oh=(ih + ph - DKH)/sh + 1 (DKH = 1 + (kh-1)×(dh+1)  (向下取整)
+#p=3,1  ph<(kh-1)(dh+1)
+#mb1_g1_ic16oc16_kh5kw5_ih202iw202_oh102ow102_sh2sw2_ph3pw1_dh0dw0n"conv_2d_corner"

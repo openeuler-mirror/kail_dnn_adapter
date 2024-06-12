@@ -1,0 +1,5 @@
+#backward weights
+
+ic13oc12_ih16oh15kh8ph8_n"conv_basic_2d:1x1_tail" #kh >=(oh + ph - DKH)/sh + 1, DKH = 1 + (ih-1)×(dh+1), Division is rounding down.
+                                                  #if oh = 15, ph = 8, then kh>=8.
+ic13oc12_ih16oh15kh9ph8_n"conv_basic_2d:1x1_tail" #Test kh = 9
