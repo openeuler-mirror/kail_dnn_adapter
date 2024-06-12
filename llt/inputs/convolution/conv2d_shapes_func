@@ -1,7 +1,0 @@
-ic3oc16_ih5oh5kh3ph1_n"conv_basic_2d:1st"
-ic3oc17_ih5oh5kh3ph1_n"conv_basic_2d:1st_tail"
-ic3oc17_ih8oh4kh3ph1sh2_n"conv_basic_2d:1st_stride_tail"
-ic16oc16_ih5oh5kh1ph0_n"conv_basic_2d:1x1"
-ic17oc17_ih5oh5kh1ph0_n"conv_basic_2d:1x1_tail"
-ic17oc17_ih8oh4kh1ph0sh2_n"conv_basic_2d:1x1_stride_tail"
-ic1oc1_ih3iw3oh2ow2kh4kw4ph0pw0_n"conv_basic_2d:padding5X5"

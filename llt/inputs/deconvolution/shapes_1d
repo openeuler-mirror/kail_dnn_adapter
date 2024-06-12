@@ -1,7 +1,0 @@
-ic8iw5oc8ow2kw3pw3dw2n"deconv1d:1"
-g1mb2oc3ow227ic6iw55kw11sw4pw0n"alexnet:deconv1"
-g2mb2oc4ow27ic16iw27kw5pw2n"alexnet:deconv2"
-mb2oc16ow13ic16iw13kw3pw1n"alexnet:deconv3"
-g1mb6ic3iw112oc3ow224kw7sw2pw3n"googlenet_v1:conv1/7x7_s2"
-mb2_g1oc3ic3_ow1030iw512kw7sw2dw0pw0_n"masknet_p1:deconv1"
-g1mb2ic8iw28oc16ow56kw1sw2pw0n"resnet_50:res3a_branch1"
