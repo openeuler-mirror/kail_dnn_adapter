@@ -1,0 +1,76 @@
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=0 222
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=0 4788
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=0 7626
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=false --axis=0 8836
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=0 8240
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=0 8217
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=0 11081
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=false --axis=0 8534
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=0 11132
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=0 6461
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=0 11747
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=0 1711
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=0 11028
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=0 4776
+
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=0 131x233
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=0 168x71
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=1 49x188
+
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=false --axis=1 174x127
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=1 9x242
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=0 88x241
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=false --axis=0 37x204
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=1 92x253
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=1 97x44
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=1 142x109
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=0 241x73
+
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=1 246x183
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=1 92x46
+
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=false --axis=1 242x196x49
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=1 21x214x42
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=0 161x205x98
+
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=1 78x148x18
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=2 236x34x118
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=1 138x52x100
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=2 13x37x220
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=0 190x166x188
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=1 61x80x131
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=2 35x72x95
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=1 113x183x81
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=1 88x148x16
+
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=3 106x207x17x250
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=false --axis=2 226x8x255x220
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=false --axis=0 246x13x17x237
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=false --axis=0 94x15x60x20
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=1 12x20x215x79
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=3 85x33x38x170
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=0 174x15x165x90
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=3 254x99x49x73
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=0 161x227x14x64
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=1 45x246x66x152
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=2 111x89x23x22
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=3 40x222x17x10
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=0 177x54x163x12
+
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=false --axis=0 25x17x36x8x143
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=false --axis=2 18x88x98x22x55
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=0 18x38x23x55x66
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=false --axis=2 25x62x145x1x20
+
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=true --axis=1 234x20x22x62x29
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=false --axis=0 11x10x114x44x28
+--ddt=f32 --sdt=f32 --alg=SOFTMAX --inplace=false --axis=3 3x9x52x153x32
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=4 13x22x12x82x92
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=0 4x18x15x188x2
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=3 254x4x22x28x84
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=0 194x15x15x20x55
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=true --axis=1 13x97x24x79x20
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=0 40x72x26x53x134
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=2 19x222x18x85x14
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=4 90x11x27x43x12
+--ddt=f16 --sdt=f16 --alg=SOFTMAX --inplace=false --axis=1 96x24x20x12x98

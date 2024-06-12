@@ -1,0 +1,6 @@
+--alg=logistic
+--batch=sizes_16
+--alg=relu
+--batch=sizes_16
+--alg=linear
+--batch=sizes_16

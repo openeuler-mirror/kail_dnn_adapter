@@ -1,0 +1,6 @@
+--sdt=f32:f32 --ddt=f32 --stag=abx:abx --dtag=abx
+--batch=sizes_32
+--sdt=f16:f16 --ddt=f16 --stag=abx:abx --dtag=abx
+--batch=sizes_16
+--sdt=f16:f16:f16 --ddt=f16 --stag=abx:abx:abx --dtag=abx
+--batch=sizes_16

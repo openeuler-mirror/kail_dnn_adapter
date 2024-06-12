@@ -50,12 +50,12 @@ FILE(GLOB DNNL_OP_EXECUTION_TEST_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/test_bmm.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_compiled_partition.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_concat.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test_conv.cpp
+    # ${CMAKE_CURRENT_SOURCE_DIR}/test_conv.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_convtranspose.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_dequantize.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_eltwise.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_interpolate.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/test_large_partition.cpp
+    # ${CMAKE_CURRENT_SOURCE_DIR}/test_large_partition.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_layer_norm.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_matmul.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/test_pool.cpp

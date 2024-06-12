@@ -1,0 +1,3 @@
+--sdt=f32:f32,f16:f16,bf16:bf16
+--stag=abx:any,abx:abx,axb:any,axb:axb
+--batch=dir
