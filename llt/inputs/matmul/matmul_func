@@ -1,0 +1,36 @@
+# float type matmul
+--skip-impl=jit,acl,ref --dt=f32:f32:f32 --stag=ab --wtag=ab --dtag=ba --bia_dt=f32 1x1:1x1
+--skip-impl=jit,acl,ref --dt=f16:f16:f16 --stag=ba --wtag=ba --dtag=ab --bia_dt=f16 1x1:1x1
+--skip-impl=jit,acl,ref --dt=bf16:bf16:f32 --stag=ba --wtag=ba --dtag=ba --bia_dt=f32 4x1:1x14
+--skip-impl=jit,acl,ref --dt=bf16:bf16:bf16 --stag=acb --wtag=acb --dtag=abc --bia_dt=bf16 2x1x2:2x2x1
+--skip-impl=jit,acl,ref --dt=bf16:bf16:f32 --stag=ab --wtag=ba --dtag=ab --bia_dt=bf16,f32 4x21:21x14
+--skip-impl=jit,acl,ref --dt=bf16:bf16:f32 --stag=ba --wtag=ba --dtag=ba --bia_dt=bf16,f32 4x21:21x14
+--skip-impl=jit,acl,ref --dt=bf16:bf16:bf16 --stag=ab --wtag=ba --dtag=ab --bia_dt=bf16 11x11:11x11
+--skip-impl=jit,acl,ref --dt=bf16:bf16:bf16 --stag=ba --wtag=ba --dtag=ab --bia_dt=bf16 11x11:11x11
+
+
+--skip-impl=jit,acl,ref --dt=f32:f32:f32 --stag=abx --wtag=abx --dtag=abx --bia_dt=f32 1x111x99:1x99x11
+--skip-impl=jit,acl,ref --dt=f16:f16:f16 --stag=abx --wtag=abx --dtag=abx --bia_dt=f16 1x111x99:1x99x11
+--skip-impl=jit,acl,ref --dt=bf16:bf16:bf16 --stag=abx --wtag=abx --dtag=abx --bia_dt=bf16 1x111x99:1x99x11
+--skip-impl=jit,acl,ref --dt=f16:f16:f32 --stag=abx --wtag=abx --dtag=abx --bia_dt=f16 1x111x99:1x99x11
+--skip-impl=jit,acl,ref --dt=bf16:bf16:f32 --stag=abx --wtag=abx --dtag=abx --bia_dt=bf16 1x111x99:1x99x11
+
+--skip-impl=jit,acl,ref --dt=f32:f32:f32 --stag=abc --wtag=acb --dtag=abc --bia_dt=f32 1x111x200:1x200x111
+--skip-impl=jit,acl,ref --dt=f16:f16:f16 --stag=abc --wtag=acb --dtag=abc --bia_dt=f16 1x111x200:1x200x111
+--skip-impl=jit,acl,ref --dt=bf16:bf16:bf16 --stag=acb --wtag=abc --dtag=abc --bia_dt=bf16 1x111x201:1x201x111
+--skip-impl=jit,acl,ref --dt=bf16:bf16:bf16 --stag=acb --wtag=acb --dtag=abc --bia_dt=bf16 1x111x201:1x201x111
+--skip-impl=jit,acl,ref --dt=f16:f16:f32 --stag=acb --wtag=acb --dtag=acb --bia_dt=f32 1x111x116:1x116x11
+
+--skip-impl=jit,acl,ref --dt=bf16:bf16:bf16 --stag=abc --wtag=abc --dtag=abc --bia_dt=bf16 2x111x201:2x201x111
+--skip-impl=jit,acl,ref --dt=bf16:bf16:bf16 --stag=acb --wtag=acb --dtag=acb --bia_dt=bf16 2x111x201:2x201x111
+--skip-impl=jit,acl,ref --dt=f16:f16:f16 --stag=abced --wtag=abcde --dtag=abcde --bia_dt=undef 1x1x1x45x13:1x1x1x13x47
+
+# int8 matmul
+--skip-impl=jit,acl,ref --dt=u8:s8:s32 --stag=ab --wtag=ab --dtag=ba --bia_dt=s32 1x1:1x1
+--skip-impl=jit,acl,ref --dt=s8:s8:s32 --stag=ba --wtag=ba --dtag=ab --bia_dt=s32 1x1:1x1
+--skip-impl=jit,acl,ref --dt=u8:s8:s32 --stag=ba --wtag=ba --dtag=ba --bia_dt=s8 4x1:1x14
+--skip-impl=jit,acl,ref --dt=u8:s8:s32 --stag=abx --wtag=abx --dtag=abx --bia_dt=s32 1x111x99:1x99x11
+--skip-impl=jit,acl,ref --dt=s8:s8:s32 --stag=acb --wtag=acb --dtag=abc --bia_dt=s8 1x111x201:1x201x111
+
+# DTS2024052322679
+--skip-impl=jit,acl,ref --dt=bf16:bf16:bf16 --stag=acb --wtag=abc --dtag=abc --bia_dt=bf16 31x127x31:31x31x15

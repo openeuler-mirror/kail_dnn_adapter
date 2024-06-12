@@ -1,0 +1,22 @@
+--sdt=f32:f32:f32
+--ddt=f32
+--stag=nchw:nchw:nchw,nhwc:nhwc:nhwc
+--scales=1.1:2.1:3.1
+16x16x16x16
+
+--sdt=f16:f16:f16
+--ddt=f16
+--stag=nchw:nchw:nchw,nhwc:nhwc:nhwc
+--scales=1.1:2.1:3.1
+16x16x16x16
+
+--sdt=bf16:bf16:bf16
+--ddt=bf16
+--stag=nchw:nchw:nchw,nhwc:nhwc:nhwc
+--scales=1.1:2.1:3.1
+16x16x16x16
+
+# DTS2024053021194
+--sdt=bf16:bf16:bf16 --ddt=bf16 --stag=acdb:acdb:acdb --dtag=acdb --scales=0.6008455594050961:0.6008455594050961:0.6008455594050961 15x15x15x1
+--sdt=bf16:bf16:bf16 --ddt=bf16 --stag=acdb:acdb:acdb --dtag=acdb --scales=0.6008455594050961:0.6008455594050961:0.6008455594050961 3x31x31x1
+--sdt=f32:f32:f32 --ddt=f32 --stag=acdb:acdb:acdb --dtag=acdb --scales=3.524492337622556:3.524492337622556:3.524492337622556 15x3x3x1

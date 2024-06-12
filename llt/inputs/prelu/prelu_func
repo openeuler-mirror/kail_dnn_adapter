@@ -1,0 +1,39 @@
+# 1D
+--dir=FWD_D,FWD_I,BWD_D --sdt=f32:f32 --stag=a:a 8:8
+--dir=FWD_D,FWD_I,BWD_D --sdt=f16:f16 --stag=a:a 8:8
+--dir=FWD_D,FWD_I,BWD_D --sdt=bf16:bf16 --stag=a:a 8:8
+
+# 2D
+--dir=FWD_D,FWD_I,BWD_D --sdt=f32:f32 --stag=ab:ab 8x8:8x8
+--dir=FWD_D,FWD_I,BWD_D --sdt=f16:f16 --stag=ab:ab 4x4:4x4
+--dir=FWD_D,FWD_I,BWD_D --sdt=bf16:bf16 --stag=ab:ab 4x4:4x4
+
+# 3D
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f32:f32 --stag=abx:abx 1x1x1:1x1x1
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f32:f32 --stag=abx:abx 8x8x8:8x8x8
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f32:f32 --stag=abx:abx 24x24x24:24x24x24
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f16:f16 --stag=abx:abx 1x1x1:1x1x1
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f16:f16 --stag=abx:abx 4x4x4:4x4x4
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f16:f16 --stag=abx:abx 24x24x24:24x24x1
+
+# 4D
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f32:f32 --stag=abx:abx 8x8x8x8:8x8x8x8
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f32:f32 --stag=abx:abx 8x8x8x8:1x8x1x1
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f32:f32 --stag=abx:abx 8x8x8x8:1x1x1x1
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f32:f32 --stag=abx:abx 8x8x8x8:8x8x1x1
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f16:f16 --stag=abx:abx 4x4x4x4:4x4x4x4
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f16:f16 --stag=abx:abx 4x4x4x4:1x4x1x1
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f16:f16 --stag=abx:abx 4x4x4x4:4x4x1x1
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f16:f16 --stag=abx:abx 4x4x4x4:1x1x1x1
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=bf16:bf16 --stag=abx:abx 4x4x4x4:4x4x4x4
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=bf16:bf16 --stag=abx:abx 4x4x4x4:1x4x1x1
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=bf16:bf16 --stag=abx:abx 4x4x4x4:4x4x1x1
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=bf16:bf16 --stag=abx:abx 4x4x4x4:1x1x1x1
+
+# 5D
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f32:f32 --stag=abx:abx 8x8x8x8x8:8x8x1x8x8
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f32:f32 --stag=abx:abx 8x8x8x8x8:1x8x8x8x1
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f32:f32 --stag=abx:abx 1x1x1x1x1:1x1x1x1x1
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f16:f16 --stag=abx:abx 8x8x8x8x8:8x1x1x1x8
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f16:f16 --stag=abx:abx 4x4x4x4x4:1x4x4x4x1
+--skip-impl=jit,acl,ref --dir=FWD_D,FWD_I,BWD_D --sdt=f16:f16 --stag=abx:abx 1x1x1x1x1:1x1x1x1x1
