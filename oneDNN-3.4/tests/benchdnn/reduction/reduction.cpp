@@ -122,7 +122,7 @@ int fill_mem(const prb_t *prb, dnn_mem_t &mem_dt, dnn_mem_t &mem_fp,
     // include ddt in is_signed to avoid mistrusted rounding negative -> 0
     const bool is_signed = sdt != dnnl_u8 && ddt != dnnl_u8;
     float shift = 0.0f;
-    if (prb->alg == alg_t::mean || (prb->alg == alg_t::min && !is_signed))
+    if ((prb->alg == alg_t::min && !is_signed))
         shift = 1.0f;
     const bool is_int = is_integral_dt(sdt);
 

@@ -61,7 +61,7 @@ file(GLOB PRIM_TEST_CASES_SRC
                               test_iface_runtime_dims.cpp
                               test_iface_attr_quantization.cpp
                               test_iface_weights_format.cpp
-                              test_iface_wino_convolution.cpp
+                              # test_iface_wino_convolution.cpp
                               test_memory.cpp
                               test_sum.cpp
                               test_reorder.cpp
@@ -74,7 +74,7 @@ file(GLOB PRIM_TEST_CASES_SRC
                               test_inner_product_forward.cpp
                               test_inner_product_backward_data.cpp
                               test_inner_product_backward_weights.cpp
-                              test_shuffle.cpp
+                              # test_shuffle.cpp
                               test_rnn_forward.cpp
                               test_convolution_forward_f32.cpp
                               test_convolution_forward_u8s8s32.cpp

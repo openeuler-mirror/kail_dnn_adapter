@@ -1,0 +1,12 @@
+--dt=f32:f32:f32
+--stag=abx
+--wtag=any
+--dtag=any
+--alg=AUTO
+--batch=dir
+--dt=f16:f16:f16
+--stag=abx
+--wtag=any
+--dtag=any
+--alg=AUTO
+--batch=dir

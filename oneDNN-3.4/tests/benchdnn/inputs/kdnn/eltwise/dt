@@ -1,0 +1,4 @@
+--dt=f32
+--batch=dir_32
+--dt=f16
+--batch=dir_16

@@ -1,0 +1,4 @@
+--dir=FWD_D
+--batch=ops_32
+--dir=BWD_D
+--batch=ops_32
