@@ -1,0 +1,13 @@
+#forward & backward data
+
+ic1oc13_ih3oh14kh7ph0sh3_n"conv_basic_2d:1st_stride_tail" #ih >=(oh + ph - DKH)/sh + 1, DKH = 1 + (kh-1)×(dh+1), 0 <= ph <=(kh-1)×(dh+1).Division is rounding down.
+                                                          #if oh = 14, ph = 0, then ih >= 3.
+ic1oc13_ih4oh14kh7ph0sh3_n"conv_basic_2d:1st_stride_tail" #Test ih = 4
+
+ic1oc13_ih5oh14kh7ph5sh3_n"conv_basic_2d:1st_stride_tail" #ih >=(oh + ph - DKH)/sh + 1, DKH = 1 + (kh-1)×(dh+1), 0 <= ph <=(kh-1)×(dh+1).Division is rounding down.
+                                                          #if oh = 14, ph = 5, then ih>=5.
+ic1oc13_ih6oh14kh7ph5sh3_n"conv_basic_2d:1st_stride_tail" #Test ih = 6
+
+ic1oc13_ih5oh14kh7ph5sh3_n"conv_basic_2d:1st_stride_tail" #ih >=(oh + ph - DKH)/sh + 1, DKH = 1 + (kh-1)×(dh+1), 0 <= ph <=(kh-1)×(dh+1).Division is rounding down.
+                                                          #if oh = 14, ph = 6, then ih>=5.
+ic1oc13_ih6oh14kh7ph5sh3_n"conv_basic_2d:1st_stride_tail" #Test ih = 6

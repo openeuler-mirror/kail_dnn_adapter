@@ -1,0 +1,82 @@
+# FWD_B
+--dt=f32:f32:f32 --dir=FWD_B --batch=shapes_1d
+--dt=f16:f16:f16 --dir=FWD_B --batch=shapes_1d
+--dt=bf16:bf16:bf16 --dir=FWD_B --batch=shapes_1d
+--dt=f16:f16:f32 --dir=FWD_B --batch=shapes_1d
+--dt=bf16:bf16:f32 --dir=FWD_B --batch=shapes_1d
+
+--dt=f32:f32:f32 --dir=FWD_B --batch=shapes_2d
+--dt=f16:f16:f16 --dir=FWD_B --batch=shapes_2d
+--dt=bf16:bf16:bf16 --dir=FWD_B --batch=shapes_2d
+--dt=f16:f16:f32 --dir=FWD_B --batch=shapes_2d
+--dt=bf16:bf16:f32 --dir=FWD_B --batch=shapes_2d
+
+# FWD_D
+--dt=f32:f32:f32 --dir=FWD_D --batch=shapes_1d
+--dt=f16:f16:f16 --dir=FWD_D --batch=shapes_1d
+--dt=bf16:bf16:bf16 --dir=FWD_D --batch=shapes_1d
+--dt=f16:f16:f32 --dir=FWD_D --batch=shapes_1d
+--dt=bf16:bf16:f32 --dir=FWD_D --batch=shapes_1d
+
+--dt=f32:f32:f32 --dir=FWD_D --batch=shapes_2d
+--dt=f16:f16:f16 --dir=FWD_D --batch=shapes_2d
+--dt=bf16:bf16:bf16 --dir=FWD_D --batch=shapes_2d
+--dt=f16:f16:f32 --dir=FWD_D --batch=shapes_2d
+--dt=bf16:bf16:f32 --dir=FWD_D --batch=shapes_2d
+
+# FWD_I
+--dt=f32:f32:f32 --dir=FWD_I --batch=shapes_1d
+--dt=f16:f16:f16 --dir=FWD_I --batch=shapes_1d
+--dt=bf16:bf16:bf16 --dir=FWD_I --batch=shapes_1d
+--dt=f16:f16:f32 --dir=FWD_I --batch=shapes_1d
+--dt=bf16:bf16:f32 --dir=FWD_I --batch=shapes_1d
+
+--dt=f32:f32:f32 --dir=FWD_I --batch=shapes_2d
+--dt=f16:f16:f16 --dir=FWD_I --batch=shapes_2d
+--dt=bf16:bf16:bf16 --dir=FWD_I --batch=shapes_2d
+--dt=f16:f16:f32 --dir=FWD_I --batch=shapes_2d
+--dt=bf16:bf16:f32 --dir=FWD_I --batch=shapes_2d
+
+# BWD_D
+--dt=f32:f32:f32 --dir=BWD_D --batch=shapes_1d
+--dt=f16:f16:f16 --dir=BWD_D --batch=shapes_1d
+--dt=bf16:bf16:bf16 --dir=BWD_D --batch=shapes_1d
+--dt=f32:f16:f16 --dir=BWD_D --batch=shapes_1d
+--dt=f32:bf16:bf16 --dir=BWD_D --batch=shapes_1d
+
+--dt=f32:f32:f32 --dir=BWD_D --batch=shapes_2d
+--dt=f16:f16:f16 --dir=BWD_D --batch=shapes_2d
+--dt=bf16:bf16:bf16 --dir=BWD_D --batch=shapes_2d
+--dt=f32:f16:f16 --dir=BWD_D --batch=shapes_2d
+--dt=f32:bf16:bf16 --dir=BWD_D --batch=shapes_2d
+
+# BWD_W
+--dt=f32:f32:f32 --dir=BWD_W --batch=shapes_1d
+--dt=f16:f16:f16 --dir=BWD_W --batch=shapes_1d
+--dt=bf16:bf16:bf16 --dir=BWD_W --batch=shapes_1d
+--dt=f16:f32:f16 --dir=BWD_W --batch=shapes_1d
+--dt=bf16:f32:bf16 --dir=BWD_W --batch=shapes_1d
+
+--dt=f32:f32:f32 --dir=BWD_W --batch=shapes_2d
+--dt=f16:f16:f16 --dir=BWD_W --batch=shapes_2d
+--dt=bf16:bf16:bf16 --dir=BWD_W --batch=shapes_2d
+--dt=f16:f32:f16 --dir=BWD_W --batch=shapes_2d
+--dt=bf16:f32:bf16 --dir=BWD_W --batch=shapes_2d
+
+# BWD_WB
+--dt=f32:f32:f32 --dir=BWD_WB --batch=shapes_1d
+--dt=f16:f16:f16 --dir=BWD_WB --batch=shapes_1d
+--dt=bf16:bf16:bf16 --dir=BWD_WB --batch=shapes_1d
+--dt=f16:f32:f16 --dir=BWD_WB --batch=shapes_1d
+--dt=bf16:f32:bf16 --dir=BWD_WB --batch=shapes_1d
+
+--dt=f32:f32:f32 --dir=BWD_WB --batch=shapes_2d
+--dt=f16:f16:f16 --dir=BWD_WB --batch=shapes_2d
+--dt=bf16:bf16:bf16 --dir=BWD_WB --batch=shapes_2d
+--dt=f16:f32:f16 --dir=BWD_WB --batch=shapes_2d
+--dt=bf16:f32:bf16 --dir=BWD_WB --batch=shapes_2d
+
+# Boundary Check
+#--dt=f32:f32:f32 --dir=FWD_B --batch=shapes_data_boundary_check
+#--dt=f32:f32:f32 --dir=BWD_D --batch=shapes_data_boundary_check
+#--dt=f32:f32:f32 --dir=BWD_WB --batch=shapes_weights_boundary_check
