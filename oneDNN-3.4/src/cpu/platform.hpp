@@ -105,6 +105,14 @@
 #define DNNL_AARCH64_ACL_ONLY(...)
 #endif
 
+// Using Kunpeng Extension Plugin kernels is optional for AArch64 builds
+// and can be enabled with the DNNL_AARCH64_USE_KDNN CMake option
+#if defined(DNNL_AARCH64) && defined(DNNL_AARCH64_USE_KDNN)
+#define DNNL_AARCH64_KDNN_ONLY(...) __VA_ARGS__
+#else
+#define DNNL_AARCH64_KDNN_ONLY(...)
+#endif
+
 // Primitive ISA section for configuring knobs.
 // Note: MSVC preprocessor by some reason "eats" symbols it's not supposed to
 // if __VA_ARGS__ is passed as empty. Then things happen like this for non-x64:
