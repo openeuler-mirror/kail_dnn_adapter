@@ -2019,6 +2019,7 @@ typedef enum {
     dnnl_convolution_winograd = 0x2,
     /// Convolution algorithm(either direct or Winograd) is chosen just in time
     dnnl_convolution_auto = 0x3,
+
     /// Direct deconvolution
     dnnl_deconvolution_direct = 0xa,
     /// Winograd deconvolution
