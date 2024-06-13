@@ -15,12 +15,12 @@
 *******************************************************************************/
 
 #include <utility>
-
 #include "utils/parallel.hpp"
 
 #include "deconv/ref_deconv.hpp"
 
 namespace deconv {
+
 
 void compute_ref_direct_fwd(const prb_t *prb, const args_t &args) {
     const dnn_mem_t &src_m = args.find(DNNL_ARG_SRC);
