@@ -21,10 +21,15 @@
 #if DNNL_X64
 #include "cpu/x64/prelu/jit_prelu_backward.hpp"
 #include "cpu/x64/prelu/jit_prelu_forward.hpp"
-
 using namespace dnnl::impl::cpu::x64;
-#elif DNNL_AARCH64 && DNNL_AARCH64_USE_ACL
+#elif defined(DNNL_AARCH64)
+
+#if DNNL_AARCH64_USE_ACL
 #include "cpu/aarch64/acl_prelu.hpp"
+#endif
+#if DNNL_AARCH64_USE_KDNN
+#include "cpu/aarch64/kdnn/kdnn_prelu.hpp"
+#endif
 using namespace dnnl::impl::cpu::aarch64;
 #endif
 
