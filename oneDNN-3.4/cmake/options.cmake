@@ -383,3 +383,9 @@ option(DNNL_AARCH64_USE_ACL "Enables use of AArch64 optimised functions
     This is only supported on AArch64 builds and assumes there is a
     functioning Compute Library build available at the location specified by the
     environment variable ACL_ROOT_DIR." OFF)
+
+option(DNNL_AARCH64_USE_KDNN "Enables use of AArch64 optimised functions
+    from Kunpeng Extension Plugin.
+    This is only supported on AArch64 builds and assumes there is a
+    functioning Kunpeng Extension Plugin available at the location specified by the
+    environment variable KDNN_ROOT_DIR." OFF)
