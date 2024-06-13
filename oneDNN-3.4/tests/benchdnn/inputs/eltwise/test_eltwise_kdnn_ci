@@ -1,0 +1,7 @@
+--inplace=true,false
+--skip-impl=acl,ref,jit
+
+# f32
+--dir=FWD_D
+--dt=f32
+--batch=option_set_kep_algs
