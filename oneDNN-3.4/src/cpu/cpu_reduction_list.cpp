@@ -22,6 +22,10 @@
 #include "cpu/x64/jit_uni_reduction.hpp"
 using namespace dnnl::impl::cpu::x64;
 #endif
+#if DNNL_AARCH64_USE_KDNN
+#include "cpu/aarch64/kdnn/kdnn_reduction.hpp"
+using namespace dnnl::impl::cpu::aarch64;
+#endif // DNNL_AARCH64_USE_KDNN
 
 namespace dnnl {
 namespace impl {
