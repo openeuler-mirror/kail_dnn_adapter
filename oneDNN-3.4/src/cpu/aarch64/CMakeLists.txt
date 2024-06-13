@@ -35,6 +35,14 @@ if(NOT DNNL_AARCH64_USE_ACL)
     list(REMOVE_ITEM SOURCES ${ACL_FILES})
 endif()
 
+if(NOT DNNL_AARCH64_USE_KDNN)
+    file(GLOB_RECURSE KDNN_FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/kdnn_*.[ch]
+        ${CMAKE_CURRENT_SOURCE_DIR}/kdnn_*.[ch]pp
+        )
+    list(REMOVE_ITEM SOURCES ${KDNN_FILES})
+endif()
+
 # If the runtime is not THREADPOOL remove threadpool_scheduler sources.
 if(NOT DNNL_CPU_RUNTIME STREQUAL "THREADPOOL")
     list(APPEND ACL_THREADPOOL_FILES
