@@ -23,10 +23,15 @@
 #if DNNL_X64
 #include "cpu/x64/jit_uni_layer_normalization.hpp"
 using namespace dnnl::impl::cpu::x64;
-#endif
+#elif defined(DNNL_AARCH64)
 
 #if DNNL_AARCH64_USE_ACL
 #include "cpu/aarch64/acl_layer_normalization.hpp"
+#endif
+#if DNNL_AARCH64_USE_KDNN
+#include "cpu/aarch64/kdnn/kdnn_layer_normalization.hpp"
+#endif
+using namespace dnnl::impl::cpu::aarch64;
 #endif
 
 namespace dnnl {
@@ -37,14 +42,11 @@ namespace {
 using namespace dnnl::impl::data_type;
 using namespace dnnl::impl::prop_kind;
 
-#if DNNL_AARCH64_USE_ACL
-using namespace dnnl::impl::cpu::aarch64;
-#endif
-
 // clang-format off
 const std::map<pk_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map() {
     static const std::map<pk_impl_key_t, std::vector<impl_list_item_t>> the_map = REG_LNORM_P({
         {{forward}, {
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_layer_normalization_fwd_t)
             CPU_INSTANCE_X64(jit_uni_layer_normalization_fwd_t)
             CPU_INSTANCE_AARCH64_ACL(acl_layer_normalization_fwd_t)
             CPU_INSTANCE(simple_layer_normalization_fwd_t)
@@ -52,6 +54,7 @@ const std::map<pk_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map() {
             nullptr,
         }},
         {{backward}, REG_BWD_PK({
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_layer_normalization_bwd_t)
             CPU_INSTANCE_X64(jit_uni_layer_normalization_bwd_t)
             CPU_INSTANCE(simple_layer_normalization_bwd_t)
             CPU_INSTANCE(ref_layer_normalization_bwd_t)
