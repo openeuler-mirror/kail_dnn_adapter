@@ -1,0 +1,12 @@
+--sdt=f32:f32 --ddt=f32
+--stag=abx:abx,axb:axb
+--inplace=true,false
+--batch=dir
+--sdt=f16:f16 --ddt=f16
+--stag=abx:abx,axb:axb
+--inplace=true,false
+--batch=dir
+--sdt=bf16:bf16 --ddt=bf16
+--stag=abx:abx,axb:axb
+--inplace=true,false
+--batch=dir

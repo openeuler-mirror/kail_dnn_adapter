@@ -1,0 +1,2 @@
+--alg=ADD,DIV,EQ,GE,GT,LE,LT,MAX,MIN,MUL,NE,SUB
+--batch=sizes

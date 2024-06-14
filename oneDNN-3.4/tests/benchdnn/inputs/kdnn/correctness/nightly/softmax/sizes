@@ -1,0 +1,17 @@
+--axis=0 2x19x128x256
+--axis=1 2x19x128x256
+--axis=2 2x19x128x256
+--axis=3 2x19x128x256
+--axis=0 16x16
+--axis=1 16x16
+--axis=0 255x10
+--axis=1 255x10
+--axis=0 2x19x17x13x120
+--axis=1 2x19x17x13x120
+--axis=2 2x19x17x13x120
+--axis=3 2x19x17x13x120
+--axis=4 2x19x17x13x120
+--axis=0 34x17x121
+--axis=1 34x17x121
+--axis=2 34x17x121
+--axis=0 121

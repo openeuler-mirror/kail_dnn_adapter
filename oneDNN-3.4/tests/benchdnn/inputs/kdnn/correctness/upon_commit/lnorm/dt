@@ -1,0 +1,36 @@
+--dt=f32:f32 --ss_dt=f32
+--tag=abx:abx
+--stat_tag=abx
+--flags=,GCH,CH,G,GC,GH
+--inplace=true,false
+--batch=dir
+--dt=f32:f32 --ss_dt=f32
+--tag=axb:axb
+--stat_tag=axb
+--flags=,GCH,CH,G,GC,GH
+--inplace=true,false
+--batch=dir
+--dt=f16:f16 --ss_dt=f16
+--tag=abx:abx
+--stat_tag=abx
+--flags=,GCH,CH,G,GC,GH
+--inplace=true,false
+--batch=dir
+--dt=f16:f16 --ss_dt=f16
+--tag=axb:axb
+--stat_tag=axb
+--flags=,GCH,CH,G,GC,GH
+--inplace=true,false
+--batch=dir
+--dt=bf16:bf16 --ss_dt=bf16
+--tag=abx:abx
+--stat_tag=abx
+--flags=,GCH,CH,G,GC,GH
+--inplace=true,false
+--batch=dir
+--dt=bf16:bf16 --ss_dt=bf16
+--tag=axb:axb
+--stat_tag=axb
+--flags=,GCH,CH,G,GC,GH
+--inplace=true,false
+--batch=dir

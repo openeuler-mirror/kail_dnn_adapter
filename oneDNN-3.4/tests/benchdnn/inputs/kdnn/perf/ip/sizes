@@ -1,0 +1,7 @@
+ic256oc1n"DLRM:7"
+ic256oc128n"NCF:1"
+ic128oc64n"NCF:2"
+ic128oc1n"NCF:3"
+mb384ic1024oc1024n"BERT-L:Encoder_MM_1*96"
+mb192ic128oc8
+mb32ic768oc8

@@ -1,0 +1,4 @@
+--dt=f32,f16,bf16
+--tag=abx,axb
+--inplace=true,false
+--batch=dir
