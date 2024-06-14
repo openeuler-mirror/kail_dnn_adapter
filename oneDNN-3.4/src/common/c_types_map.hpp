@@ -68,6 +68,7 @@ const alg_kind_t undef = dnnl_alg_kind_undef;
 const alg_kind_t convolution_auto = dnnl_convolution_auto;
 const alg_kind_t convolution_direct = dnnl_convolution_direct;
 const alg_kind_t convolution_winograd = dnnl_convolution_winograd;
+
 const alg_kind_t deconvolution_direct = dnnl_deconvolution_direct;
 const alg_kind_t deconvolution_winograd = dnnl_deconvolution_winograd;
 const alg_kind_t eltwise_relu = dnnl_eltwise_relu;

@@ -43,7 +43,7 @@ macro(expect_arch_or_generic arch)
 endmacro()
 
 # Check chosen DNNL_BLAS_VENDOR is supported and set BLA_VENDOR accordingly
-set(CBLAS_HEADERS "cblas.h")
+set(CBLAS_HEADERS "kblas.h")
 if(DNNL_BLAS_VENDOR STREQUAL "MKL")
     expect_arch_or_generic("X64")
     set(BLA_VENDOR "Intel10_64_dyn")
@@ -73,7 +73,7 @@ if(BLAS_FOUND)
      set(CMAKE_REQUIRED_LIBRARIES "${BLAS_LINKER_FLAGS};${BLAS_LIBRARIES}")
      set(CMAKE_REQUIRED_FLAGS "${BLAS_COMPILER_FLAGS}")
 
-     # Find and include  accompanying cblas.h
+     # Find and include  accompanying kblas.h
      list(GET BLAS_LIBRARIES 0 FIRST_BLAS_LIB)
      get_filename_component(BLAS_LIB_DIR ${FIRST_BLAS_LIB} PATH)
      find_path(BLAS_INCLUDE_DIR ${CBLAS_HEADERS} $ENV{CPATH} ${BLAS_LIB_DIR}/../include ${BLAS_LIB_DIR}/../../include)
