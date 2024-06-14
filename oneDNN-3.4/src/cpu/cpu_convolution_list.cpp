@@ -66,6 +66,10 @@ using namespace dnnl::impl::cpu::x64;
 #include "cpu/aarch64/acl_indirect_gemm_convolution.hpp"
 #include "cpu/aarch64/acl_winograd_convolution.hpp"
 #endif
+#if DNNL_AARCH64 && DNNL_AARCH64_USE_KDNN
+#include "cpu/aarch64/kdnn/kdnn_convolution.hpp"
+#include "cpu/aarch64/kdnn/kdnn_jit_sve_convolution.hpp"
+#endif // DNNL_AARCH64_USE_KDNN
 using namespace dnnl::impl::cpu::aarch64;
 #endif
 
@@ -82,6 +86,8 @@ const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map()
     static const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> the_map = REG_CONV_P({
         // FWD fp
         {{forward, f32, f32, f32}, {
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_fwd_t)
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_jit_sve_convolution_fwd_t<sve_256>)
             CPU_INSTANCE_AVX512(brdgmm_dw_convolution_fwd_t)
             CPU_INSTANCE_X64(ip_convolution_fwd_t)
             CPU_INSTANCE_AMX(brgemm_1x1_convolution_fwd_t<avx512_core_amx>)
@@ -115,6 +121,7 @@ const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map()
             nullptr,
         }},
         {{forward, bf16, bf16, f32}, {
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_fwd_t)
             CPU_INSTANCE_AVX512(brdgmm_dw_convolution_fwd_t)
             CPU_INSTANCE_X64(ip_convolution_fwd_t)
             CPU_INSTANCE_AMX(brgemm_1x1_convolution_fwd_t<avx512_core_amx>)
@@ -136,6 +143,7 @@ const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map()
             nullptr,
         }},
         {{forward, bf16, bf16, bf16}, {
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_fwd_t)
             CPU_INSTANCE_AVX512(brdgmm_dw_convolution_fwd_t)
             CPU_INSTANCE_X64(ip_convolution_fwd_t)
             CPU_INSTANCE_AMX(brgemm_1x1_convolution_fwd_t<avx512_core_amx>)
@@ -158,6 +166,7 @@ const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map()
             nullptr,
         }},
         {{forward, f16, f16, f32}, {
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_fwd_t)
             CPU_INSTANCE_AVX512(brdgmm_dw_convolution_fwd_t)
             CPU_INSTANCE_X64(ip_convolution_fwd_t)
             CPU_INSTANCE_AMX(brgemm_1x1_convolution_fwd_t<avx512_core_amx_fp16>)
@@ -173,6 +182,7 @@ const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map()
             nullptr,
         }},
         {{forward, f16, f16, f16}, {
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_fwd_t)
             CPU_INSTANCE_AVX512(brdgmm_dw_convolution_fwd_t)
             CPU_INSTANCE_X64(ip_convolution_fwd_t)
             CPU_INSTANCE_AMX(brgemm_1x1_convolution_fwd_t<avx512_core_amx_fp16>)
@@ -209,6 +219,7 @@ const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map()
         }},
         // BWD_D fp
         {{backward_data, f32, f32, f32}, REG_BWD_D_PK({
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_bwd_data_t)
             CPU_INSTANCE_X64(ip_convolution_bwd_data_t)
             CPU_INSTANCE_AMX(brgemm_convolution_bwd_t<avx512_core_amx>)
             CPU_INSTANCE_AVX512(brgemm_convolution_bwd_t<avx512_core>)
@@ -232,6 +243,7 @@ const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map()
             nullptr,
         })},
         {{backward_data, f32, bf16, bf16}, REG_BWD_D_PK({
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_bwd_data_t)
             CPU_INSTANCE_X64(ip_convolution_bwd_data_t)
             CPU_INSTANCE_AMX(brgemm_convolution_bwd_t<avx512_core_amx>)
             CPU_INSTANCE_AMX(brgemm_convolution_bwd_strided_t<avx512_core_amx>)
@@ -251,6 +263,7 @@ const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map()
             nullptr,
         })},
         {{backward_data, bf16, bf16, bf16}, REG_BWD_D_PK({
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_bwd_data_t)
             CPU_INSTANCE_X64(ip_convolution_bwd_data_t)
             CPU_INSTANCE_AMX(brgemm_convolution_bwd_t<avx512_core_amx>)
             CPU_INSTANCE_AMX(brgemm_convolution_bwd_strided_t<avx512_core_amx>)
@@ -270,6 +283,7 @@ const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map()
             nullptr,
         })},
         {{backward_data, f32, f16, f16}, REG_BWD_D_PK({
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_bwd_data_t)
             CPU_INSTANCE_X64(ip_convolution_bwd_data_t)
             CPU_INSTANCE_AMX(brgemm_convolution_bwd_t<avx512_core_amx_fp16>)
             CPU_INSTANCE_AMX(brgemm_convolution_bwd_strided_t<avx512_core_amx_fp16>)
@@ -285,6 +299,7 @@ const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map()
             nullptr,
         })},
         {{backward_data, f16, f16, f16}, REG_BWD_D_PK({
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_bwd_data_t)
             CPU_INSTANCE_X64(ip_convolution_bwd_data_t)
             CPU_INSTANCE_AMX(brgemm_convolution_bwd_t<avx512_core_amx_fp16>)
             CPU_INSTANCE_AMX(brgemm_convolution_bwd_strided_t<avx512_core_amx_fp16>)
@@ -301,6 +316,7 @@ const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map()
         })},
         // BWD_W fp
         {{backward_weights, f32, f32, f32}, REG_BWD_PK({
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_bwd_weights_t)
             CPU_INSTANCE_X64(ip_convolution_bwd_weights_t)
             CPU_INSTANCE_AVX512(jit_avx512_common_dw_convolution_bwd_weights_t)
             CPU_INSTANCE_AVX512(jit_avx512_common_1x1_convolution_bwd_weights_t)
@@ -317,6 +333,7 @@ const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map()
             nullptr,
         })},
         {{backward_weights, bf16, f32, bf16}, REG_BWD_PK({
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_bwd_weights_t)
             CPU_INSTANCE_X64(ip_convolution_bwd_weights_t)
             CPU_INSTANCE_AVX512(jit_uni_dw_convolution_bwd_weights_t<avx512_core, bf16, f32>)
             CPU_INSTANCE_AMX(brgemm_convolution_bwd_weights_t)
@@ -328,6 +345,7 @@ const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map()
             nullptr,
         })},
         {{backward_weights, bf16, bf16, bf16}, REG_BWD_PK({
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_bwd_weights_t)
             CPU_INSTANCE_X64(ip_convolution_bwd_weights_t)
             CPU_INSTANCE_AVX512(jit_uni_dw_convolution_bwd_weights_t<avx512_core, bf16, bf16>)
             CPU_INSTANCE_AMX(brgemm_convolution_bwd_weights_t)
@@ -339,12 +357,14 @@ const std::map<pk_dt_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map()
             nullptr,
         })},
         {{backward_weights, f16, f32, f16}, REG_BWD_PK({
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_bwd_weights_t)
             CPU_INSTANCE_X64(ip_convolution_bwd_weights_t)
             CPU_INSTANCE_AMX(brgemm_convolution_bwd_weights_t)
             CPU_INSTANCE(ref_convolution_bwd_weights_t)
             nullptr,
         })},
         {{backward_weights, f16, f16, f16}, REG_BWD_PK({
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_convolution_bwd_weights_t)
             CPU_INSTANCE_X64(ip_convolution_bwd_weights_t)
             CPU_INSTANCE_AMX(brgemm_convolution_bwd_weights_t)
             CPU_INSTANCE(ref_convolution_bwd_weights_t)

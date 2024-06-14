@@ -276,6 +276,14 @@ struct ref_deconvolution_fwd_t : public primitive_t {
         return status::success;
     }
 
+#if DNNL_AARCH64 && (DNNL_AARCH64_USE_ACL || DNNL_AARCH64_USE_KDNN)
+    status_t create_resource(
+            engine_t *engine, resource_mapper_t &mapper) const override {
+        CHECK(conv_p_->create_resource(engine, mapper));
+        return status::success;
+    }
+#endif
+
     status_t execute(const exec_ctx_t &ctx) const override;
 
 private:
@@ -395,7 +403,7 @@ struct ref_deconvolution_bwd_data_t : public primitive_t {
         return pd()->conv_pd_->create_primitive(conv_p_, engine);
     }
 
-#if DNNL_AARCH64 && DNNL_AARCH64_USE_ACL
+#if DNNL_AARCH64 && (DNNL_AARCH64_USE_ACL || DNNL_AARCH64_USE_KDNN)
     status_t create_resource(
             engine_t *engine, resource_mapper_t &mapper) const override {
         CHECK(conv_p_->create_resource(engine, mapper));
@@ -518,6 +526,14 @@ struct ref_deconvolution_bwd_weights_t : public primitive_t {
     status_t init(engine_t *engine) override {
         return pd()->conv_pd_->create_primitive(conv_p_, engine);
     }
+
+#if DNNL_AARCH64 && (DNNL_AARCH64_USE_ACL || DNNL_AARCH64_USE_KDNN)
+    status_t create_resource(
+            engine_t *engine, resource_mapper_t &mapper) const override {
+        CHECK(conv_p_->create_resource(engine, mapper));
+        return status::success;
+    }
+#endif
 
     status_t execute(const exec_ctx_t &ctx) const override;
 

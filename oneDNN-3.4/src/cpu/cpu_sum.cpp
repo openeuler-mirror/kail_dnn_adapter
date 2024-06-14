@@ -24,6 +24,12 @@
 #if DNNL_X64
 #include "cpu/x64/jit_uni_xf16_sum.hpp"
 using namespace dnnl::impl::cpu::x64;
+#elif defined(DNNL_AARCH64)
+
+#if DNNL_AARCH64_USE_KDNN
+#include "cpu/aarch64/kdnn/kdnn_sum.hpp"
+#endif
+using namespace dnnl::impl::cpu::aarch64;
 #endif
 
 namespace dnnl {
@@ -37,8 +43,10 @@ using namespace dnnl::impl::data_type;
             __VA_ARGS__::pd_t>()),
 #define SUM_INSTANCE_AVX512(...) REG_AVX512_ISA(INSTANCE(__VA_ARGS__))
 #define SUM_INSTANCE_AVX2(...) REG_AVX2_ISA(INSTANCE(__VA_ARGS__))
+#define SUM_INSTANCE_AARCH64_KDNN(...) DNNL_AARCH64_KDNN_ONLY(INSTANCE(__VA_ARGS__))
 // clang-format off
 constexpr impl_list_item_t cpu_sum_impl_list[] = REG_SUM_P({
+        SUM_INSTANCE_AARCH64_KDNN(kdnn_sum_t)
         SUM_INSTANCE_AVX512(jit_xf16_sum_t<bf16, bf16, avx512_core>)
         SUM_INSTANCE_AVX512(jit_xf16_sum_t<bf16, f32, avx512_core>)
         SUM_INSTANCE_AVX2(jit_xf16_sum_t<bf16, bf16, avx2_vnni_2>)

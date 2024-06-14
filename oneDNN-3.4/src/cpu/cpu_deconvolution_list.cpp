@@ -33,6 +33,9 @@ using namespace dnnl::impl::cpu::x64;
 #if DNNL_AARCH64_USE_ACL
 #include "cpu/aarch64/acl_deconvolution.hpp"
 #endif
+#if DNNL_AARCH64_USE_KDNN
+#include "cpu/aarch64/kdnn/kdnn_deconvolution.hpp"
+#endif
 using namespace dnnl::impl::cpu::aarch64;
 #endif
 

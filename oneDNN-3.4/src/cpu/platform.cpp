@@ -119,6 +119,8 @@ bool has_data_type_support(data_type_t data_type) {
 #endif
 #elif DNNL_AARCH64_USE_ACL
             return arm_compute::CPUInfo::get().has_bf16();
+#elif DNNL_AARCH64_USE_KDNN
+            return true;
 #else
             return false;
 #endif
@@ -128,6 +130,8 @@ bool has_data_type_support(data_type_t data_type) {
                     || x64::mayiuse(x64::avx2_vnni_2);
 #elif DNNL_AARCH64_USE_ACL
             return arm_compute::CPUInfo::get().has_fp16();
+#elif DNNL_AARCH64_USE_KDNN
+            return true;
 #else
             return false;
 #endif
@@ -155,6 +159,8 @@ bool has_training_support(data_type_t data_type) {
 #endif
 #elif DNNL_AARCH64_USE_ACL
             return arm_compute::CPUInfo::get().has_bf16();
+#elif DNNL_AARCH64_USE_KDNN
+            return true;
 #else
             return false;
 #endif
@@ -163,6 +169,8 @@ bool has_training_support(data_type_t data_type) {
             return x64::mayiuse(x64::avx512_core_fp16);
 #elif DNNL_AARCH64_USE_ACL
             return arm_compute::CPUInfo::get().has_fp16();
+#elif DNNL_AARCH64_USE_KDNN
+            return true;
 #else
             return false;
 #endif
@@ -209,6 +217,8 @@ unsigned get_num_cores() {
     return x64::cpu().getNumCores(Xbyak::util::CoreLevel);
 #elif DNNL_AARCH64_USE_ACL
     return arm_compute::cpuinfo::num_threads_hint();
+#elif DNNL_AARCH64_USE_KDNN
+    return std::thread::hardware_concurrency();
 #else
     return 1;
 #endif

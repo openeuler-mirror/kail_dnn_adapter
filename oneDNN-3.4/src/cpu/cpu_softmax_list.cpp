@@ -28,6 +28,9 @@ using namespace dnnl::impl::cpu::x64;
 #if DNNL_AARCH64_USE_ACL
 #include "cpu/aarch64/acl_softmax.hpp"
 #endif
+#if DNNL_AARCH64_USE_KDNN
+#include "cpu/aarch64/kdnn/kdnn_softmax.hpp"
+#endif // DNNL_AARCH64_USE_KDNN
 using namespace dnnl::impl::cpu::aarch64;
 #endif
 
@@ -43,6 +46,7 @@ const std::map<pk_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map() {
     // clang-format off
     static std::map<pk_impl_key_t, std::vector<impl_list_item_t>> the_map =  REG_SOFTMAX_P({
         {{forward}, {
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_softmax_fwd_t)
             CPU_INSTANCE_X64(jit_uni_softmax_fwd_t)
             CPU_INSTANCE_AARCH64(jit_uni_softmax_fwd_t<sve_512>)
             CPU_INSTANCE_AARCH64_ACL(acl_softmax_fwd_t)
@@ -50,6 +54,7 @@ const std::map<pk_impl_key_t, std::vector<impl_list_item_t>> &impl_list_map() {
             nullptr,
         }},
         {{backward}, REG_BWD_PK({
+            CPU_INSTANCE_AARCH64_KDNN(kdnn_softmax_bwd_t)
             CPU_INSTANCE_X64(jit_uni_softmax_bwd_t)
             CPU_INSTANCE_AARCH64(jit_uni_softmax_bwd_t<sve_512>)
             CPU_INSTANCE(ref_softmax_bwd_t)
