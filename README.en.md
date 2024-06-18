@@ -8,22 +8,39 @@ The kail_dnn_adapter contains the ACL and oneDNN software and the kail_dnn adapt
 
 #### Installation
 
-1.  cd kail_dnn_adapter
-2.  sh build.sh
+1. Install dependencies: Math Library, AI Library  (You can obtain the corresponding installation package and installation guide from the [Kunpeng community](https://www.hikunpeng.com/zh/developer/boostkit/library/math).)
+2. cd kail_dnn_adapter
+3. sh build.sh
 
 #### Instructions
 
-1. After compilation, libdnnl.so is linked separately to obtain all interface functions of oneDNN v3.4.0 and can replace the original libdnnl.so.
+After compilation, libdnnl.so is linked separately to obtain all interface functions of oneDNN v3.4.0 and can replace the original libdnnl.so.
+
 The path of libdnnl.so is as follows: “out/oneDNN-3.4/build/src/”
+
 The path of the dependent library is as follows:
-The so path related to the ACL library is “out/ComputeLibrary-23.11/build/”.
-The so paths related to the math library are as follows:
-“/usr/local/kml/lib/kblas/omp/libkblas.so”
-“/usr/local/kml/lib/libkfft_omp.so”
-“/usr/local/kml/lib/libkfftf_omp.so”
-“/usr/local/kml/lib/libkffth_omp.so”
-“/usr/local/kml/lib/kvml/multi/libkvml.so”
-“/usr/local/kml/lib/libkm.so”
+
+1. The so path related to the ACL library is:
+
+* “out/ComputeLibrary-23.11/build/”.
+
+2. The so paths related to the ai library are as follows:
+
+* “/usr/local/kail/lib/libkdnn.so”
+
+3. The so paths related to the math library are as follows:
+
+* “/usr/local/kml/lib/kblas/omp/libkblas.so”
+
+* “/usr/local/kml/lib/libkfft_omp.so”
+
+* “/usr/local/kml/lib/libkfftf_omp.so”
+
+* “/usr/local/kml/lib/libkffth_omp.so”
+
+* “/usr/local/kml/lib/kvml/multi/libkvml.so”
+
+* “/usr/local/kml/lib/libkm.so”
 
 #### Contribution
 
