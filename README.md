@@ -4,20 +4,45 @@
 Adapter for Kunpeng Deep Neural Network Library
 
 #### 软件架构
-软件架构说明
+kail_dnn_adapter包含了ACL和oneDNN两个软件以及kail_dnn的适配层，kail_dnn通过算子库插件形式集成进开源软件oneDNN。
 
 
 #### 安装教程
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+1. 安装依赖：数学库、AI库（可在[鲲鹏社区](https://www.hikunpeng.com/zh/developer/boostkit/library/math)获取对应安装包以及安装指南）
+2. cd kail_dnn_adapter
+3. sh build.sh
 
 #### 使用说明
 
-1.  xxxx
-2.  xxxx
-3.  xxxx
+编译后，单独链接libdnnl.so可以得到oneDNN v3.4.0的全部接口功能，可替换原先的libdnnl.so使用。
+
+libdnnl.so路径为：“out/oneDNN-3.4/build/src/”
+
+其依赖库的路径如下：
+
+1. ACL库相关so路径：
+
+* “out/ComputeLibrary-23.11/build/”
+
+2. AI库相关so路径：
+
+* /usr/local/kail/lib/libkdnn.so
+
+3. 数学库相关so路径：
+
+* “/usr/local/kml/lib/kblas/omp/libkblas.so”
+
+* “/usr/local/kml/lib/libkfft_omp.so”
+
+* “/usr/local/kml/lib/libkfftf_omp.so”
+
+* “/usr/local/kml/lib/libkffth_omp.so”
+
+* “/usr/local/kml/lib/kvml/multi/libkvml.so”
+
+* “/usr/local/kml/lib/libkm.so”
+
 
 #### 参与贡献
 
