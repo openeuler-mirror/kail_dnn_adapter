@@ -741,6 +741,369 @@ void kdnn_jit_f16_sve_conv_fwd_kernel<isa>::generate() {
 
 }
 
+template <cpu_isa_t isa>
+bool kdnn_jit_f16_sve_conv_fwd_kernel<isa>::post_ops_ok(
+        kdnn_jit_conv_conf_t &jcp, const primitive_attr_t &attr) {
+    const auto &p = attr.post_ops_;
+
+    auto is_eltwise = [&](int idx) { return p.entry_[idx].is_eltwise(); };
+    auto is_sum = [&](int idx) { return p.entry_[idx].is_sum(); };
+
+    switch (p.len()) {
+        case 0: return true; // no post_ops
+        case 1: return is_eltwise(0) || is_sum(0); // sum OR eltwise
+        case 2: return is_sum(0) && is_eltwise(1); // sum -> eltwise
+        default: return false;
+    }
+
+    return false;
+}
+
+template <cpu_isa_t isa>
+status_t kdnn_jit_f16_sve_conv_fwd_kernel<isa>::init_conf(kdnn_jit_conv_conf_t &jcp,
+        const convolution_desc_t &cd, memory_desc_t &src_md,
+        memory_desc_t &weights_md, memory_desc_t &dst_md,
+        memory_desc_t &bias_md, const primitive_attr_t &attr, int nthreads) {
+    using namespace prop_kind;
+
+    if (!mayiuse(isa)) { return status::unimplemented; }
+
+    const memory_desc_wrapper src_d(&src_md);
+    const memory_desc_wrapper weights_d(&weights_md);
+    const memory_desc_wrapper dst_d(&dst_md);
+    const memory_desc_wrapper bias_d(&bias_md);
+
+    const int regs = 28;
+    const bool with_groups = weights_d.ndims() == src_d.ndims() + 1;
+    int ndims = src_d.ndims();
+
+    jcp = zero<decltype(jcp)>();
+    jcp.nthr = jcp.aligned_threads = nthreads;
+    jcp.ndims = ndims;
+    jcp.prop_kind = cd.prop_kind;
+    jcp.ngroups = with_groups ? weights_d.dims()[0] : 1;
+    jcp.mb = src_d.dims()[0];
+    jcp.oc = dst_d.dims()[1] / jcp.ngroups;
+    jcp.oc_without_padding = jcp.oc;
+    jcp.ic = src_d.dims()[1] / jcp.ngroups;
+    jcp.ic_without_padding = jcp.ic;
+    jcp.id = (ndims == 5) ? src_d.dims()[2] : 1;
+    jcp.ih = (ndims == 3) ? 1 : src_d.dims()[ndims - 2];
+    jcp.iw = src_d.dims()[ndims - 1];
+    jcp.od = (ndims == 5) ? dst_d.dims()[2] : 1;
+    jcp.oh = (ndims == 3) ? 1 : dst_d.dims()[ndims - 2];
+    jcp.ow = dst_d.dims()[ndims - 1];
+    jcp.kd = (ndims == 5) ? weights_d.dims()[with_groups + 2] : 1;
+    jcp.kh = (ndims == 3) ? 1 : weights_d.dims()[with_groups + ndims - 2];
+    jcp.kw = weights_d.dims()[with_groups + ndims - 1];
+    jcp.f_pad = (ndims == 5) ? cd.padding[0][0] : 0;
+    jcp.t_pad = (ndims == 3) ? 0 : cd.padding[0][ndims - 4];
+    jcp.l_pad = cd.padding[0][ndims - 3];
+    jcp.stride_d = (ndims == 5) ? cd.strides[0] : 1;
+    jcp.stride_h = (ndims == 3) ? 1 : cd.strides[ndims - 4];
+    jcp.stride_w = cd.strides[ndims - 3];
+
+    jcp.dilate_d = (ndims == 5) ? cd.dilates[0] : 0;
+    jcp.dilate_h = (ndims == 3) ? 0 : cd.dilates[ndims - 4];
+    jcp.dilate_w = cd.dilates[ndims - 3];
+
+    int ext_kw = calculate_extended_filter_size(jcp.kw, jcp.dilate_w);
+    int ext_kh = calculate_extended_filter_size(jcp.kh, jcp.dilate_h);
+    int ext_kd = calculate_extended_filter_size(jcp.kd, jcp.dilate_d);
+    jcp.r_pad = calculate_end_padding(
+            jcp.l_pad, jcp.ow, jcp.iw, jcp.stride_w, ext_kw);
+    jcp.b_pad = calculate_end_padding(
+            jcp.t_pad, jcp.oh, jcp.ih, jcp.stride_h, ext_kh);
+    jcp.back_pad = calculate_end_padding(
+            jcp.f_pad, jcp.od, jcp.id, jcp.stride_d, ext_kd);
+    bool kernel_outside_src = false || ext_kw <= jcp.l_pad
+            || ext_kw <= jcp.r_pad || ext_kh <= jcp.t_pad || ext_kh <= jcp.b_pad
+            || ext_kd <= jcp.f_pad || ext_kd <= jcp.back_pad;
+    if (kernel_outside_src) { return status::unimplemented; }
+
+    const auto dat_tag_nxc = pick(ndims - 3, nwc, nhwc, ndhwc);
+    const auto dat_tag_ncx = pick(ndims - 3, ncw, nchw, ncdhw);
+    const auto dat_tag_nCx8c = pick(ndims - 3, nCw8c, nChw8c, nCdhw8c);
+    const auto dat_tag_nCx16c = pick(ndims - 3, nCw16c, nChw16c, nCdhw16c);
+    auto curr_src_tag = src_d.matches_one_of_tag(
+            dat_tag_nxc, dat_tag_nCx16c, dat_tag_nCx8c, dat_tag_ncx);
+    auto curr_dst_tag = dst_d.matches_one_of_tag(
+            dat_tag_nxc, dat_tag_nCx16c, dat_tag_nCx8c);
+    bool is_data_layout_nxc
+            = utils::everyone_is(dat_tag_nxc, curr_src_tag, curr_dst_tag);
+
+    /* 1st convolution check */
+    jcp.is_1stconv = is_1stconv(jcp);
+
+    /* Padding check (Channel) */
+    bool ok_to_pad_channels
+            = true && jcp.ngroups == 1 && src_d.data_type() == data_type::f16;
+
+    int full_simd_w = cpu_isa_traits<isa>::vlen / typesize;
+    jcp.simd_w = full_simd_w;
+    jcp.oc_block = jcp.simd_w;
+    jcp.ic_block = jcp.is_1stconv ? jcp.ic : jcp.simd_w;
+
+    /* Channel padding */
+    if (ok_to_pad_channels) {
+        jcp.oc = rnd_up(jcp.oc, jcp.oc_block);
+        jcp.ic = rnd_up(jcp.ic, jcp.ic_block);
+    }
+
+    /* Input and output channels must be multiples of simd_w */
+    if (!(jcp.oc % jcp.oc_block == 0 && jcp.ic % jcp.ic_block == 0)) {
+        return status::unimplemented;
+    }
+    jcp.ic_tail = 0;
+    jcp.oc_tail = 0;
+
+    /* Post operation check */
+    if (!post_ops_ok(jcp, attr)) { return status::unimplemented; }
+
+    format_tag_t src_tag, dst_tag, wei_tag;
+
+    switch (isa) {
+        case sve_256:
+            dst_tag = dat_tag_nCx16c;
+            src_tag = jcp.is_1stconv ? dat_tag_ncx : dat_tag_nCx16c;
+            wei_tag = pick(2 * ndims - 6 + with_groups, OIw16i16o, gOIw16i16o,
+                    OIhw16i16o, gOIhw16i16o, OIdhw16i16o, gOIdhw16i16o);
+            break;
+        default: break;
+    }
+
+    if (src_md.format_kind == format_kind::any)
+        CHECK(memory_desc_init_by_tag(src_md, src_tag));
+    else if (curr_src_tag != src_tag)
+        return status::unimplemented;
+    jcp.src_tag = src_tag;
+
+    if (dst_md.format_kind == format_kind::any)
+        CHECK(memory_desc_init_by_tag(dst_md, dst_tag));
+    else if (curr_dst_tag != dst_tag)
+        return status::unimplemented;
+    jcp.dst_tag = dst_tag;
+
+    jcp.with_bias = cd.bias_desc.format_kind != format_kind::undef;
+    if (jcp.with_bias) {
+        if (bias_d.format_kind() == format_kind::any)
+            CHECK(memory_desc_init_by_tag(bias_md, x));
+    }
+
+    if (mayiuse(isa) && src_d.data_type() == data_type::f16
+            && weights_d.data_type() == data_type::f16
+            && dst_d.data_type() == data_type::f16) {
+        jcp.ver = kdnn_ver_fma;
+        jcp.typesize_in = typesize;
+        jcp.typesize_out = typesize;
+
+        if (jcp.is_1stconv) {
+            switch (isa) {
+                case sve_512:
+                    wei_tag = with_groups
+                            ? pick(ndims - 3, gOwi32o, gOhwi32o, gOdhwi32o)
+                            : pick(ndims - 3, Owi32o, Ohwi32o, Odhwi32o);
+                    break;
+                case sve_256:
+                    wei_tag = with_groups
+                            ? pick(ndims - 3, gOwi16o, gOhwi16o, gOdhwi16o)
+                            : pick(ndims - 3, Owi16o, Ohwi16o, Odhwi16o);
+                    break;
+                default: break;
+            }
+        }
+    } else {
+        return status::unimplemented;
+    }
+
+    if (init_tag(jcp.wei_tag, weights_md, weights_d, wei_tag)
+            != status::success)
+        return status::unimplemented;
+
+    jcp.ur_w = nstl::min(jcp.ow, regs); // ur_w is min(output width, regs=28)
+
+    int n_oi = (jcp.ow / jcp.ur_w);
+    int r_pad = calculate_end_padding(
+            jcp.l_pad, jcp.ur_w * n_oi, jcp.iw, jcp.stride_w, ext_kw);
+    if (jcp.l_pad > 0 && r_pad > 0) n_oi--;
+
+    /* Grouped channel offset to support 'non-blocked data' format for
+     * convolution sizes with '(input_channel / ngroups) < simd' */
+    jcp.nonblk_group_off
+            = (jcp.ngroups > 1 && one_of(jcp.src_tag, ncw, nchw, ncdhw))
+            ? jcp.ic
+            : 1;
+
+    jcp.nb_ic = div_up(jcp.ic, jcp.ic_block);
+    jcp.nb_oc = div_up(jcp.oc, jcp.oc_block);
+    jcp.nb_ic_blocking = jcp.nb_oc_blocking = 1;
+
+    jcp.ow_block = jcp.ow;
+
+    auto get_thr_eff = [=](int nb_oc_blocking, int ow_block) {
+        int nb_ow = div_up(jcp.ow, ow_block);
+        int nb_oc_chunks = div_up(jcp.nb_oc, nb_oc_blocking);
+        int work_amount = jcp.mb * jcp.oh * nb_oc_chunks * nb_ow;
+        float disbalance = (float)jcp.ow / rnd_up(jcp.ow, ow_block);
+        float thr_eff = disbalance * (float)work_amount
+                / rnd_up(work_amount, jcp.nthr);
+        return thr_eff;
+    };
+
+    auto get_ow_block = [=](int nb_oc_blocking, int ur_w, float &eff) {
+        int res_ow_block = jcp.ow;
+        eff = get_thr_eff(nb_oc_blocking, res_ow_block);
+
+        return res_ow_block;
+    };
+
+    if (jcp.ver == kdnn_ver_fma && mayiuse(isa)) {
+        // These conditions define a set of shapes with 'ow = 1' which
+        // have a very limited optimization space for performance. Try
+        // to optimize by using a larger 'nb_oc_blocking' size.
+        bool expl_bcast_condition
+                = everyone_is(1, jcp.ngroups, jcp.mb, jcp.stride_h, jcp.ow,
+                          jcp.stride_w, jcp.id, jcp.od, jcp.kd, jcp.stride_d)
+                && jcp.iw == jcp.kw && jcp.nb_oc > 1
+                && everyone_is(0, jcp.l_pad, jcp.r_pad, jcp.dilate_w, jcp.f_pad,
+                        jcp.back_pad, jcp.dilate_d)
+                && jcp.oh >= 60 && jcp.kh >= 3;
+
+        if (jcp.mb == 1) {
+            unsigned int inp_size = jcp.mb * div_up(jcp.ih, jcp.stride_h)
+                    * div_up(jcp.iw, jcp.stride_w) * jcp.ic;
+            unsigned int wei_size = jcp.ic * jcp.oc * jcp.kh * jcp.kw;
+
+            // Estimate whether we need to limit the number of threads
+            // and calculate this number. Includes some heuristic.
+            int oc_chunks = jcp.nb_oc / jcp.nb_oc_blocking;
+            int work_amount = jcp.mb * jcp.ngroups * oc_chunks * jcp.oh;
+            int job_size_min = work_amount / nthreads;
+            int job_size_max = div_up(work_amount, nthreads);
+            int ch_max = rnd_up(jcp.oh, job_size_max);
+            int ch_min = (job_size_min == 0) ? jcp.oh
+                                             : rnd_up(jcp.oh, job_size_min);
+            bool not_aligned_max = ch_max % jcp.oh != 0 && ch_max / jcp.oh < 2
+                    && (jcp.oh != 8 || ch_max / jcp.oh > 1);
+            bool not_aligned_min = ch_min % jcp.oh != 0 && ch_min / jcp.oh < 2
+                    && (jcp.oh != 8 || ch_min / jcp.oh > 1);
+            bool eligible_case = (jcp.stride_h == 1 && jcp.stride_w == 1)
+                    || nthreads > oc_chunks;
+            if (jcp.loop_order == kdnn_loop_cgn && oc_chunks > 1 && nthreads > 1
+                    && wei_size / inp_size > 24
+                    && (not_aligned_max || not_aligned_min) && eligible_case) {
+                // Try to find number of threads > nthreads / 2 such that
+                // oc_chunks is a multiple of nthreads, or nthreads is a
+                // multiple of oc_chunks. Otherwise, keep default value.
+                // TODO: implement a task-based alternative without throttling.
+                jcp.aligned_threads = jcp.nthr;
+                for (int i = jcp.nthr; i > jcp.nthr / 2; i--) {
+                    if (oc_chunks % i == 0 || i % oc_chunks == 0) {
+                        jcp.aligned_threads = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        const int max_nb_oc = 2;
+        {
+            jcp.kernel_kind = kdnn_expl_bcast;
+            jcp.nb_ic_blocking = 1;
+            if (IMPLICATION(jcp.is_1stconv, jcp.mb >= 1)
+                    || expl_bcast_condition) {
+                float best_thr_eff = 0.f;
+                int best_nb_oc_blocking = 1;
+                for (int i = nstl::min(jcp.nb_oc, max_nb_oc); i > 0; i--) {
+                    if (jcp.nb_oc % i == 0) {
+                        if (expl_bcast_condition) {
+                            best_nb_oc_blocking = i;
+                            break;
+                        } else {
+                            float thr_eff;
+                            int ur_w = nstl::min(jcp.ow, 31 / (i + 1));
+                            get_ow_block(i, ur_w, thr_eff);
+                            if (thr_eff > 1.05f * best_thr_eff) {
+                                best_nb_oc_blocking = i;
+                                best_thr_eff = thr_eff;
+                            }
+                        }
+                    }
+                }
+                jcp.nb_oc_blocking = best_nb_oc_blocking;
+                jcp.ur_w = nstl::min(jcp.ow, 31 / (jcp.nb_oc_blocking + 1));
+                if (jcp.l_pad > jcp.ur_w) {
+                    jcp.nb_oc_blocking = 1;
+                    jcp.ur_w = nstl::min(jcp.ow, 31 / (jcp.nb_oc_blocking + 1));
+                }
+                if (jcp.l_pad >= 16) { jcp.ur_w = nstl::min(jcp.l_pad, 29); }
+            }
+        }
+    }
+
+    jcp.ur_w_tail = jcp.ow % jcp.ur_w;
+
+    bool args_ok = true && jcp.l_pad <= jcp.ur_w
+            && jcp.ic <= src_d.padded_dims()[1]
+            && jcp.oc <= dst_d.padded_dims()[1]
+            && jcp.ic <= weights_d.padded_dims()[with_groups + 1]
+            && jcp.oc <= weights_d.padded_dims()[with_groups + 0];
+    if (!args_ok) return status::unimplemented;
+
+    int r_pad_no_tail = nstl::max(0,
+            calculate_end_padding(jcp.l_pad, jcp.ow - jcp.ur_w_tail, jcp.iw,
+                    jcp.stride_w, ext_kw));
+    if (r_pad_no_tail > jcp.ur_w) return status::unimplemented;
+
+    pick_loop_order(jcp);
+
+    jcp.nb_ic_L2 = jcp.nb_ic;
+
+    float thr_eff;
+    jcp.ow_block = get_ow_block(jcp.nb_oc_blocking, jcp.ur_w, thr_eff);
+    jcp.nb_ow = div_up(jcp.ow, jcp.ow_block);
+
+    const int L2_size = platform::get_per_core_cache_size(2) / sizeof(float16_t);
+
+    // Source and output data needs to fit in L2,
+    // leaving some space for weights and prefetching.
+    int h_L2 = int(((0.6f * L2_size) / jcp.simd_w
+                           - nstl::min(0, jcp.kh - jcp.stride_h) * jcp.iw)
+            / (jcp.stride_h * jcp.iw + jcp.ow));
+    jcp.h_blocking = nstl::max(1, nstl::min(jcp.oh, h_L2));
+
+    if (is_data_layout_nxc) {
+        // TODO: improve L2 blocking for large IC
+        const int nb_ic_theshold_L2 = 32;
+        if (jcp.nb_ic > nb_ic_theshold_L2 && jcp.nb_ic < 2 * nb_ic_theshold_L2)
+            jcp.nb_ic_L2 = div_up(jcp.nb_ic, 2);
+        else
+            jcp.nb_ic_L2 = nstl::min(nb_ic_theshold_L2, jcp.nb_ic);
+    }
+
+    // A rough check on code size
+    // TODO: come up with a tighter bound
+    {
+        const int max_code_size = 256 * 1024; // default size of jit generator
+        int mult = 1 + (jcp.l_pad > 0) + (r_pad > 0);
+        const float max_instruction_size = 15;
+        float ur_fac
+                = (float)jcp.kw * jcp.ic_block * jcp.nb_oc_blocking * jcp.ur_w;
+        float code_size = mult * ur_fac * max_instruction_size;
+        if (code_size > max_code_size) return status::unimplemented;
+    }
+
+    return status::success;
+}
+
+template <cpu_isa_t isa>
+void kdnn_jit_f16_sve_conv_fwd_kernel<isa>::init_scratchpad(
+        memory_tracking::registrar_t &scratchpad, const kdnn_jit_conv_conf_t &jcp) {
+
+    if (jcp.with_bias && jcp.oc != jcp.oc_without_padding)
+        scratchpad.book(key_conv_padded_bias, jcp.oc, jcp.typesize_out);
+}
+
 /*struct instantiation*/
 template struct kdnn_jit_f16_sve_conv_fwd_kernel<sve_256>;
 
