@@ -4,9 +4,9 @@
 #include "common/c_types_map.hpp"
 #include "common/memory_tracking.hpp"
 
-#include "cpu/aarch64/kdnn/kdnn_jit_generator.hpp"
-#include "cpu/aarch64/kdnn/kdnn_jit_primitive_conf.hpp"
-#include "cpu/aarch64/kdnn/kdnn_jit_op_imm_check.hpp"
+#include "cpu/aarch64/kdnn/jit/kdnn_jit_generator.hpp"
+#include "cpu/aarch64/kdnn/jit/kdnn_jit_primitive_conf.hpp"
+#include "cpu/aarch64/kdnn/jit/kdnn_jit_op_imm_check.hpp"
 
 #define kdnn_VL_OFS(ofs, isa) (ofs >> cpu_isa_traits<isa>::vlen_shift)
 
@@ -134,6 +134,7 @@ private:
 
     inline void prepare_output(int ur_w);
     inline void store_output(int ur_w);
+    inline void compute_loop_fma(int ur_w, int pad_l, int pad_r);
     inline void compute_loop_fma_core(int ur_w, int pad_l, int pad_r);
     inline void compute_loop(int ur_w, int pad_l, int pad_r);
 
