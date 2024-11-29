@@ -32,7 +32,9 @@ struct kdnn_inner_product_fwd_t : public primitive_t {
         pd_t(const pd_t& p) : cpu_inner_product_fwd_pd_t(p) {
             if (p.kdnn_ip_prim_) {
                 this->kdnn_ip_prim_.reset(new KDNN::InnerProductLayerFWD{*(p.kdnn_ip_prim_.get())});
-                this->post_ops = p.post_ops;
+                this->post_ops_ = p.post_ops_;
+                this->need_tmp_dst_ = p.need_tmp_dst_;
+                this->dst_size_ = p.dst_size_;
             }
         }
 
@@ -63,58 +65,34 @@ struct kdnn_inner_product_fwd_t : public primitive_t {
             // more often fixed, (so reorders can be hoisted) it makes sense to
             // reorder the weights to fit the src.
             if (wei_tag == any || wei_tag == undef) {
-                if (src_tag == ncdhw) {
-                    CHECK(memory_desc_init_by_tag(weights_md_, format_tag::oidhw));
-                } else if (src_tag == ndhwc) {
-                    CHECK(memory_desc_init_by_tag(weights_md_, format_tag::odhwi));
-                } else if (src_tag == nchw) {
-                    CHECK(memory_desc_init_by_tag(weights_md_, format_tag::oihw));
-                } else if (src_tag == nhwc) {
-                    CHECK(memory_desc_init_by_tag(weights_md_, format_tag::ohwi));
-                } else if (src_tag == ncw) {
-                    CHECK(memory_desc_init_by_tag(weights_md_, format_tag::oiw));
-                } else if (src_tag == nwc) {
-                    CHECK(memory_desc_init_by_tag(weights_md_, format_tag::owi));
-                } else { // src_tag == nc
-                    CHECK(memory_desc_init_by_tag(weights_md_, format_tag::oi));
-                }
+                CHECK(memory_desc_init_by_tag(weights_md_, src_tag));
             }
 
             const memory_desc_wrapper src_d(src_md());
             const memory_desc_wrapper weights_d(weights_md(0));
             const memory_desc_wrapper dst_d(dst_md());
             const memory_desc_wrapper bias_d(weights_md(1));
-
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(src_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(weights_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(dst_d.data_type())) {
-                    return status::unimplemented;
-            }
-            if (src_d.ndims() < 1 || src_d.ndims() > 5 ||
-                weights_d.ndims() < 1 || weights_d.ndims() > 5 ||
-                dst_d.ndims() < 1 || dst_d.ndims() > 5) {
-                return status::unimplemented;
-            }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(src_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(weights_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(dst_d)) {
-                    return status::unimplemented;
-            }
-
-            if (!kdnn_utils::may_convert_to_kdnn_ip_fwd(src_d,
-                weights_d, dst_d, bias_d)) {
+            auto&& ip_fwd = kdnn_utils::convert_to_kdnn_ip_fwd(src_d,
+                weights_d, dst_d, bias_d);
+            if (!ip_fwd.first) {
                 return status::unimplemented;
             } else {
-                kdnn_ip_prim_.reset(kdnn_utils::convert_to_kdnn_ip_fwd(src_d,
-                    weights_d, dst_d, bias_d));
+                kdnn_ip_prim_.reset(ip_fwd.second);
+                CHECK(post_ops_.init(engine, attr_.post_ops_, dst_md_));
+                if (post_ops_.has_sum()) {
+                    need_tmp_dst_ = true;
+                    dst_size_ = dst_d.nelems() * dst_d.data_type_size();
+                } else {
+                    need_tmp_dst_ = false;
+                    dst_size_ = 0;
+                }
+                return status::success;
             }
-
-            CHECK(post_ops.init(engine, attr_.post_ops_, dst_md_));
-
-            return status::success;
         }
 
-        kdnn_post_ops_t post_ops;
+        bool need_tmp_dst_;
+        size_t dst_size_;
+        kdnn_post_ops_t post_ops_;
 
         std::unique_ptr<KDNN::InnerProductLayerFWD> kdnn_ip_prim_;
 
@@ -127,7 +105,7 @@ struct kdnn_inner_product_fwd_t : public primitive_t {
         if (mapper.has_resource(this)) return status::success;
 
         mapper.add(this, std::make_unique<kdnn_ip_fwd_resource_t>(pd()->kdnn_ip_prim_));
-        CHECK(pd()->post_ops.create_resource(engine, mapper));
+        CHECK(pd()->post_ops_.create_resource(engine, mapper));
 
         return status::success;
     }
@@ -143,7 +121,13 @@ private:
         const void *src = CTX_IN_MEM(const void *, DNNL_ARG_SRC);
         const void *wei = CTX_IN_MEM(const void *, DNNL_ARG_WEIGHTS);
         void *bia = CTX_OUT_MEM(void *, DNNL_ARG_BIAS);
-        void *dst = CTX_OUT_MEM(void *, DNNL_ARG_DST);
+        void *dst;
+
+        if (pd()->need_tmp_dst_) {
+            dst = KDNN::Service::AlignedAlloc(pd()->dst_size_);
+        } else {
+            dst = CTX_OUT_MEM(void *, DNNL_ARG_DST);
+        }
 
         return execute_forward(ctx, src, wei, dst, bia);
     }
@@ -163,7 +147,11 @@ private:
             return status::runtime_error;
         }
 
-        pd()->post_ops.execute(ctx, dst);
+        pd()->post_ops_.execute(ctx, dst);
+
+        if (pd()->need_tmp_dst_) {
+            KDNN::Service::Deallocate(dst);
+        }
 
         return status::success;
     }
@@ -215,50 +203,20 @@ struct kdnn_inner_product_bwd_data_t : public primitive_t {
             }
 
             if (wei_tag == any || wei_tag == undef) {
-                if (diff_src_tag == ncdhw) {
-                    CHECK(memory_desc_init_by_tag(weights_md_, format_tag::oidhw));
-                } else if (diff_src_tag == ndhwc) {
-                    CHECK(memory_desc_init_by_tag(weights_md_, format_tag::odhwi));
-                } else if (diff_src_tag == nchw) {
-                    CHECK(memory_desc_init_by_tag(weights_md_, format_tag::oihw));
-                } else if (diff_src_tag == nhwc) {
-                    CHECK(memory_desc_init_by_tag(weights_md_, format_tag::ohwi));
-                } else if (diff_src_tag == ncw) {
-                    CHECK(memory_desc_init_by_tag(weights_md_, format_tag::oiw));
-                } else if (diff_src_tag == nwc) {
-                    CHECK(memory_desc_init_by_tag(weights_md_, format_tag::owi));
-                } else { // diff_src_tag == nc
-                    CHECK(memory_desc_init_by_tag(weights_md_, format_tag::oi));
-                }
+                CHECK(memory_desc_init_by_tag(weights_md_, diff_src_tag));
             }
 
             const memory_desc_wrapper diff_dst_d(diff_dst_md(0));
             const memory_desc_wrapper weights_d(weights_md(0));
             const memory_desc_wrapper diff_src_d(diff_src_md(0));
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(diff_dst_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(weights_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(diff_src_d.data_type())) {
-                    return status::unimplemented;
-            }
-            if (diff_dst_d.ndims() < 1 || diff_dst_d.ndims() > 5 ||
-                weights_d.ndims() < 1 || weights_d.ndims() > 5 ||
-                diff_src_d.ndims() < 1 || diff_src_d.ndims() > 5) {
-                return status::unimplemented;
-            }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(diff_dst_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(weights_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(diff_src_d)) {
-                    return status::unimplemented;
-            }
-            if (!kdnn_utils::may_convert_to_kdnn_ip_bwd_d(diff_dst_d,
-                    weights_d, diff_src_d)) {
+            auto&& ip_bwdd = kdnn_utils::convert_to_kdnn_ip_bwd_d(diff_dst_d,
+                weights_d, diff_src_d);
+            if (!ip_bwdd.first) {
                 return status::unimplemented;
             } else {
-                kdnn_ip_prim_.reset(kdnn_utils::convert_to_kdnn_ip_bwd_d(diff_dst_d,
-                    weights_d, diff_src_d));
+                kdnn_ip_prim_.reset(ip_bwdd.second);
+                return status::success;
             }
-
-            return status::success;
         }
 
         std::unique_ptr<KDNN::InnerProductLayerBWDData> kdnn_ip_prim_;
@@ -352,53 +310,25 @@ struct kdnn_inner_product_bwd_weights_t : public primitive_t {
                 return dnnl::impl::status::unimplemented;
             }
 
-            if (src_tag == ncdhw) {
-                CHECK(memory_desc_init_by_tag(diff_weights_md_, format_tag::oidhw));
-            } else if (src_tag == ndhwc) {
-                CHECK(memory_desc_init_by_tag(diff_weights_md_, format_tag::odhwi));
-            } else if (src_tag == nchw) {
-                CHECK(memory_desc_init_by_tag(diff_weights_md_, format_tag::oihw));
-            } else if (src_tag == nhwc) {
-                CHECK(memory_desc_init_by_tag(diff_weights_md_, format_tag::ohwi));
-            } else if (src_tag == ncw) {
-                CHECK(memory_desc_init_by_tag(diff_weights_md_, format_tag::oiw));
-            } else if (src_tag == nwc) {
-                CHECK(memory_desc_init_by_tag(diff_weights_md_, format_tag::owi));
-            } else if (src_tag == nc) {
-                CHECK(memory_desc_init_by_tag(diff_weights_md_, format_tag::oi));
-            } else { // src_tag == cn
+            if (src_tag == cn) {
                 CHECK(memory_desc_init_by_tag(diff_weights_md_, format_tag::oi));
                 CHECK(memory_desc_init_by_tag(src_md_, format_tag::nc));
+            } else {
+                CHECK(memory_desc_init_by_tag(diff_weights_md_, src_tag));
             }
 
             const memory_desc_wrapper diff_dst_d(diff_dst_md(0));
             const memory_desc_wrapper diff_weights_d(diff_weights_md(0));
             const memory_desc_wrapper src_d(src_md(0));
             const memory_desc_wrapper diff_bias_d(diff_weights_md(1));
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(diff_dst_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(diff_weights_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(src_d.data_type())) {
-                    return status::unimplemented;
-            }
-            if (diff_dst_d.ndims() < 1 || diff_dst_d.ndims() > 5 ||
-                diff_weights_d.ndims() < 1 || diff_weights_d.ndims() > 5 ||
-                src_d.ndims() < 1 || src_d.ndims() > 5) {
-                return status::unimplemented;
-            }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(diff_dst_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(diff_weights_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(src_d)) {
-                    return status::unimplemented;
-            }
-            if (!kdnn_utils::may_convert_to_kdnn_ip_bwd_w(diff_dst_d,
-                        src_d, diff_weights_d, diff_bias_d)) {
+            auto&& ip_bwdw = kdnn_utils::convert_to_kdnn_ip_bwd_w(diff_dst_d,
+                src_d, diff_weights_d, diff_bias_d);
+            if (!ip_bwdw.first) {
                 return status::unimplemented;
             } else {
-                kdnn_ip_prim_.reset(kdnn_utils::convert_to_kdnn_ip_bwd_w(diff_dst_d,
-                    src_d, diff_weights_d, diff_bias_d));
+                kdnn_ip_prim_.reset(ip_bwdw.second);
+                return status::success;
             }
-
-            return status::success;
         }
 
         std::unique_ptr<KDNN::InnerProductLayerBWDWeights> kdnn_ip_prim_;

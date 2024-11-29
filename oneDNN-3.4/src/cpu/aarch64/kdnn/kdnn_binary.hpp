@@ -7,6 +7,7 @@
 
 #include "cpu/cpu_binary_pd.hpp"
 #include "cpu/aarch64/kdnn/kdnn_utils.hpp"
+#include "cpu/cpu_primitive.hpp"
 
 namespace dnnl {
 namespace impl {
@@ -38,44 +39,34 @@ struct kdnn_binary_t : public primitive_t {
         DECLARE_COMMON_PD_T("kdnn", kdnn_binary_t);
 
         status_t init(engine_t *engine) {
- 
-            CHECK(set_default_params());
+            auto&& first_non_any_md = kdnn_utils::get_first_non_any_format_kind(src0_md_, src1_md_, dst_md_);
+            auto&& layout = kdnn_utils::get_layout(first_non_any_md);
+            if (src0_md_.format_kind == format_kind::any) {
+                CHECK(memory_desc_init_by_tag(src0_md_, layout));
+            }
+            if (src1_md_.format_kind == format_kind::any) {
+                CHECK(memory_desc_init_by_tag(src1_md_, layout));
+            }
+            if (dst_md_.format_kind == format_kind::any) {
+                CHECK(memory_desc_init_by_tag(dst_md_, layout));
+            }
 
-            if (!attr()->has_default_values()) return status::unimplemented;
-
-            using namespace format_tag;
-            auto src0_tag = memory_desc_matches_one_of_tag(src0_md_, ndhwc, ncdhw, nchw, nhwc, nwc, ncw, nc, x);
-            auto src1_tag = memory_desc_matches_one_of_tag(src1_md_, src0_tag);
-            if (utils::one_of(format_tag::undef, src0_tag, src1_tag)) {
-                // Unsupported memory layout
-                return dnnl::impl::status::unimplemented;
+            if (!attr()->has_default_values(primitive_attr_t::skip_mask_t::scales_runtime)
+                || (!(attr()->scales_.get(DNNL_ARG_SRC_0).mask_ == 0))
+                || (!(attr()->scales_.get(DNNL_ARG_SRC_1).mask_ == 0))) {
+                return status::unimplemented;
             }
 
             const memory_desc_wrapper src0_d(src_md(0));
             const memory_desc_wrapper src1_d(src_md(1));
             const memory_desc_wrapper dst_d(dst_md());
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(src0_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(src1_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(dst_d.data_type())) {
-                    return status::unimplemented;
-            }
-            if (src0_d.ndims() < 1 || src0_d.ndims() > 5 ||
-                src1_d.ndims() < 1 || src1_d.ndims() > 5 ||
-                dst_d.ndims() < 1 || dst_d.ndims() > 5) {
-                return status::unimplemented;
-            }
-            // Check only src0 and dst layouts, because layout src1 must be equal to layout src0.
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(src0_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(dst_d)) {
-                    return status::unimplemented;
-            }
-            if (!kdnn_utils::may_convert_to_kdnn_binary(src0_d, src1_d, dst_d, desc_.alg_kind)) {
+            auto&& binary = kdnn_utils::convert_to_kdnn_binary(src0_d, src1_d, dst_d, desc_.alg_kind);
+            if (!binary.first) {
                 return status::unimplemented;
             } else {
-                kdnn_binary_prim_.reset(kdnn_utils::convert_to_kdnn_binary(src0_d, src1_d, dst_d, desc_.alg_kind));
+                kdnn_binary_prim_.reset(binary.second);
+                return status::success;
             }
-
-            return status::success;
         }
 
         std::unique_ptr<KDNN::BinaryLayer> kdnn_binary_prim_;
@@ -119,8 +110,12 @@ private:
         KDNN::BinaryLayer &kdnn_obj = (
             ctx.get_resource_mapper()->get<kdnn_binary_resource_t>(this))->get_kdnn_obj();
 
+        const float *scales[2];
+        ASSIGN_ARG_SCALE_VALUE(scales[0], DNNL_ARG_SRC_0);
+        ASSIGN_ARG_SCALE_VALUE(scales[1], DNNL_ARG_SRC_1);
+
         try {
-            kdnn_obj.Run(src0, src1, dst);
+            kdnn_obj.Run(src0, src1, dst, scales[0][0], scales[1][0]);
         } catch (const std::exception& e) {
             return status::runtime_error;
         }

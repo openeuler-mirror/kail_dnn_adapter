@@ -49,37 +49,32 @@ struct kdnn_layer_normalization_fwd_t : public primitive_t {
             const memory_desc_wrapper dst_d(dst_md());
             const memory_desc_wrapper stats_d((!stats_are_src() && is_training()) ? dst_md(1) : src_md(1));
             const memory_desc_wrapper scaleshift_d(scaleshift_md_);
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(src_d.data_type()) ||
-                ((stats_are_src() || (!stats_are_src() && is_training())) &&
+            if (((stats_are_src() || (!stats_are_src() && is_training())) &&
                 !kdnn_utils::is_data_type_supported_by_kdnn(stats_d.data_type())) ||
                 (((use_scale()) || use_shift()) &&
-                !kdnn_utils::is_data_type_supported_by_kdnn(scaleshift_d.data_type())) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(dst_d.data_type())) {
+                !kdnn_utils::is_data_type_supported_by_kdnn(scaleshift_d.data_type()))) {
                     return status::unimplemented;
             }
-            if ((src_d.ndims() < 1 || src_d.ndims() > 5) ||
-                ((stats_are_src() || (!stats_are_src() && is_training())) &&
+            if (((stats_are_src() || (!stats_are_src() && is_training())) &&
                 (stats_d.ndims() < 1 || stats_d.ndims() > 5)) ||
                 (((use_scale()) || use_shift()) &&
-                (scaleshift_d.ndims() < 1 || scaleshift_d.ndims() > 5)) ||
-                (dst_d.ndims() < 1 || dst_d.ndims() > 5)) {
+                (scaleshift_d.ndims() < 1 || scaleshift_d.ndims() > 5))) {
                 return status::unimplemented;
             }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(src_d) ||
-                ((stats_are_src() || (!stats_are_src() && is_training())) &&
+            if (((stats_are_src() || (!stats_are_src() && is_training())) &&
                 !kdnn_utils::is_data_layout_supported_by_kdnn(stats_d)) ||
                 (((use_scale()) || use_shift()) &&
-                !kdnn_utils::is_data_layout_supported_by_kdnn(scaleshift_d)) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(dst_d)) {
+                !kdnn_utils::is_data_layout_supported_by_kdnn(scaleshift_d))) {
                     return status::unimplemented;
             }
-            if (!kdnn_utils::may_convert_to_kdnn_layer_normalization_fwd(src_d, stats_d, scaleshift_d, dst_d, stats_are_src(), use_scale(), use_shift())) {
-               return status::unimplemented;
+            auto&& lnorm_fwd = kdnn_utils::convert_to_kdnn_layer_normalization_fwd(src_d, stats_d,
+                scaleshift_d, dst_d, stats_are_src(), use_scale(), use_shift());
+            if (!lnorm_fwd.first) {
+                return status::unimplemented;
             } else {
-                kdnn_layer_normalization_prim_.reset(kdnn_utils::convert_to_kdnn_layer_normalization_fwd(src_d, stats_d, scaleshift_d, dst_d, stats_are_src(), use_scale(), use_shift()));
+                kdnn_layer_normalization_prim_.reset(lnorm_fwd.second);
+                return status::success;
             }
-
-            return status::success;
         }
 
         std::unique_ptr<KDNN::NormalizationLayerFWD> kdnn_layer_normalization_prim_;
@@ -111,8 +106,8 @@ private:
         auto scale = CTX_IN_MEM(const void *, DNNL_ARG_SCALE);
         auto shift = CTX_IN_MEM(const void *, DNNL_ARG_SHIFT);
 
-        auto mean = CTX_OUT_MEM(void *, DNNL_ARG_MEAN);
-        auto variance = CTX_OUT_MEM(void *, DNNL_ARG_VARIANCE);
+        auto mean = CTX_OUT_MEM(float *, DNNL_ARG_MEAN);
+        auto variance = CTX_OUT_MEM(float *, DNNL_ARG_VARIANCE);
 
         const float eps = pd()->desc()->layer_norm_epsilon;
         const bool save_stats = pd()->is_training();
@@ -123,7 +118,7 @@ private:
 
     status_t execute_forward(const exec_ctx_t &ctx, const void *src,
             void *dst, const void *scale, const void *shift,
-            void *mean, void *variance,
+            float *mean, float *variance,
             bool save_stats, const float eps) const {
         // Lock here is needed because resource_mapper does not support concurrent access.
         std::lock_guard<std::mutex> _lock {this->mtx};
@@ -178,49 +173,16 @@ struct kdnn_layer_normalization_bwd_t : public primitive_t {
             const memory_desc_wrapper stat_d(src_md(1));
             const memory_desc_wrapper diff_src_d(diff_src_md(0));
             const memory_desc_wrapper diff_dst_d(diff_dst_md(0));
-            const memory_desc_wrapper sc_d(weights_md(0));
-            const memory_desc_wrapper diff_sc_d(diff_weights_md(0));
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(src_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(stat_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(diff_src_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(diff_dst_d.data_type()) ||
-                ((use_scale() || use_shift()) && (!kdnn_utils::is_data_type_supported_by_kdnn(sc_d.data_type()))) ||
-                ((use_scale() || use_shift()) && (!kdnn_utils::is_data_type_supported_by_kdnn(diff_sc_d.data_type())))) {
-                    return status::unimplemented;
-            }
-            if ((src_d.ndims() < 1 || src_d.ndims() > 5) ||
-                (stat_d.ndims() < 1 || stat_d.ndims() > 5) ||
-                (diff_src_d.ndims() < 1 || diff_src_d.ndims() > 5) ||
-                (diff_dst_d.ndims() < 1 || diff_dst_d.ndims() > 5) ||
-                ((use_scale() || use_shift()) && ((sc_d.ndims() < 1) || (sc_d.ndims() > 5))) ||
-                ((use_scale() || use_shift()) && ((diff_sc_d.ndims() < 1) || (diff_sc_d.ndims() > 5)))) {
-                    return status::unimplemented;
-            }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(src_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(stat_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(diff_src_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(diff_dst_d) ||
-                ((use_scale() || use_shift()) && (!kdnn_utils::is_data_layout_supported_by_kdnn(sc_d))) ||
-                ((use_scale() || use_shift()) && (!kdnn_utils::is_data_layout_supported_by_kdnn(diff_sc_d)))) {
-                    return status::unimplemented;
-            }
-            if (use_scale() || use_shift()) {
-                if (!kdnn_utils::may_convert_to_kdnn_layer_normalization_bwd(src_d, stat_d, diff_src_d, diff_dst_d, sc_d, diff_sc_d)) {
-                   return status::unimplemented;
-                } else {
-                    kdnn_layer_normalization_prim_.reset(
-                            kdnn_utils::convert_to_kdnn_layer_normalization_bwd(src_d, stat_d, diff_src_d, diff_dst_d, sc_d, diff_sc_d));
-                }
+            const memory_desc_wrapper scale_shift_d(weights_md(0));
+            const memory_desc_wrapper diff_scale_shift_d(diff_weights_md(0));
+            auto&& lnorm_bwd = kdnn_utils::convert_to_kdnn_layer_normalization_bwd(src_d, stat_d, diff_src_d,
+                diff_dst_d, scale_shift_d, diff_scale_shift_d, use_global_stats(), use_scale(), use_shift());
+            if (!lnorm_bwd.first) {
+                return status::unimplemented;
             } else {
-                if (!kdnn_utils::may_convert_to_kdnn_layer_normalization_bwd(src_d, stat_d, diff_src_d, diff_dst_d)) {
-                   return status::unimplemented;
-                } else {
-                    kdnn_layer_normalization_prim_.reset(
-                            kdnn_utils::convert_to_kdnn_layer_normalization_bwd(src_d, stat_d, diff_src_d, diff_dst_d));
-                }
+                kdnn_layer_normalization_prim_.reset(lnorm_bwd.second);
+                return status::success;
             }
-
-            return status::success;
         }
 
         std::unique_ptr<KDNN::NormalizationLayerBWD> kdnn_layer_normalization_prim_;
@@ -252,14 +214,8 @@ private:
         auto diff_dst = CTX_IN_MEM(const void *, DNNL_ARG_DIFF_DST);
         auto scale = CTX_IN_MEM(const void *, DNNL_ARG_SCALE);
         auto diff_src = CTX_OUT_MEM(void *, DNNL_ARG_DIFF_SRC);
-
-        auto diff_scale =  pd()->use_scale()
-            ? CTX_OUT_MEM(void *, DNNL_ARG_DIFF_SCALE)
-            : nullptr;
-        auto diff_shift = pd()->use_shift()
-            ? CTX_OUT_MEM(void *, DNNL_ARG_DIFF_SHIFT)
-            : nullptr;
-
+        auto diff_scale =  CTX_OUT_MEM(void *, DNNL_ARG_DIFF_SCALE);
+        auto diff_shift = CTX_OUT_MEM(void *, DNNL_ARG_DIFF_SHIFT);
         return execute_backward(ctx, src, mean, variance, diff_dst,
                 scale, diff_src, diff_scale, diff_shift);
     }
@@ -276,7 +232,7 @@ private:
 
         try {
             kdnn_obj.Run(src, mean, variance, diff_dst,
-                scale, diff_src, diff_scale, diff_shift, !pd()->use_global_stats(), pd()->desc()->layer_norm_epsilon);
+                scale, diff_src, diff_scale, diff_shift, pd()->desc()->layer_norm_epsilon);
         } catch (const std::exception& e) {
             return status::runtime_error;
         }

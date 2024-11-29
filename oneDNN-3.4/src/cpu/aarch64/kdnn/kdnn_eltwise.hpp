@@ -45,26 +45,13 @@ struct kdnn_eltwise_fwd_t : public primitive_t {
             bool ok = is_fwd() && !has_zero_dim_memory() && attr()->has_default_values()
                     && set_default_formats_common();
             if (!ok) return status::unimplemented;
-
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(src_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(dst_d.data_type())) {
-                    return status::unimplemented;
-            }
-            if (src_d.ndims() < 1 || src_d.ndims() > 5 ||
-                dst_d.ndims() < 1 || dst_d.ndims() > 5) {
-                return status::unimplemented;
-            }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(src_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(dst_d)) {
-                    return status::unimplemented;
-            }
-            if (!kdnn_utils::may_convert_to_kdnn_act_fwd(src_d, dst_d, desc_.alg_kind, desc_.alpha, desc_.beta)) {
+            auto&& eltwise_fwd = kdnn_utils::convert_to_kdnn_act_fwd(src_d, dst_d, desc_.alg_kind, desc_.alpha, desc_.beta);
+            if (!eltwise_fwd.first) {
                 return status::unimplemented;
             } else {
-                kdnn_eltwise_prim_.reset(kdnn_utils::convert_to_kdnn_act_fwd(src_d, dst_d, desc_.alg_kind, desc_.alpha, desc_.beta));
+                kdnn_eltwise_prim_.reset(eltwise_fwd.second);
+                return status::success;
             }
-
-            return status::success;
         }
 
         // We use `unique_ptr` because `activation_layer_info` doesn't have default constructor
@@ -151,32 +138,26 @@ struct kdnn_eltwise_bwd_t : public primitive_t {
             const memory_desc_wrapper src_d = (utils::one_of(desc_.alg_kind, alg_kind::eltwise_linear))
                 ? diff_dst_md()   // Real src will not be used by algorithm
                 : ((!is_fwd() && use_dst()) ? dst_md() : src_md());
-
             bool ok = !is_fwd() && !has_zero_dim_memory() && attr()->has_default_values()
                     && set_default_formats_common();
             if (!ok) return status::unimplemented;
-
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(diff_src_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(diff_dst_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(src_d.data_type())) {
+            if (!is_fwd() && use_dst()) {
+                auto&& eltwise_bwd = kdnn_utils::convert_to_kdnn_act_bwd_with_dst(diff_src_d, diff_dst_d, src_d, desc_.alg_kind, desc_.alpha, desc_.beta);
+                if (!eltwise_bwd.first) {
                     return status::unimplemented;
-            }
-            if (diff_src_d.ndims() < 1 || diff_src_d.ndims() > 5 ||
-                diff_dst_d.ndims() < 1 || diff_dst_d.ndims() > 5 || 
-                src_d.ndims() < 1 || src_d.ndims() > 5)  {
-                return status::unimplemented;
-            }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(diff_src_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(diff_dst_d)) {
-                    return status::unimplemented;
-            }
- 
-            if (!kdnn_utils::may_convert_to_kdnn_act_bwd(diff_src_d, diff_dst_d, src_d, desc_.alg_kind, desc_.alpha, desc_.beta)) {
-                return status::unimplemented;
+                } else {
+                    kdnn_eltwise_prim_.reset(eltwise_bwd.second);
+                    return status::success;
+                }
             } else {
-                kdnn_eltwise_prim_.reset(kdnn_utils::convert_to_kdnn_act_bwd(diff_dst_d, diff_src_d, src_d, desc_.alg_kind, desc_.alpha, desc_.beta));
+                auto&& eltwise_bwd = kdnn_utils::convert_to_kdnn_act_bwd(diff_src_d, diff_dst_d, src_d, desc_.alg_kind, desc_.alpha, desc_.beta);
+                if (!eltwise_bwd.first) {
+                    return status::unimplemented;
+                } else {
+                    kdnn_eltwise_prim_.reset(eltwise_bwd.second);
+                    return status::success;
+                }
             }
-
             return status::success;
         }
 
