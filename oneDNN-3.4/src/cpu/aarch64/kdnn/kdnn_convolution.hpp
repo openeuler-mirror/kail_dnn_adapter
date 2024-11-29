@@ -7,6 +7,7 @@
 
 #include "cpu/cpu_convolution_pd.hpp"
 #include "cpu/aarch64/kdnn/kdnn_utils.hpp"
+#include "cpu/aarch64/kdnn/kdnn_post_ops.hpp"
 
 namespace dnnl {
 namespace impl {
@@ -32,6 +33,9 @@ struct kdnn_convolution_fwd_t : public primitive_t {
         pd_t(const pd_t& p) : cpu_convolution_fwd_pd_t(p) {
             if (p.kdnn_convolution_prim_) {
                 this->kdnn_convolution_prim_.reset(new KDNN::ConvolutionLayerFWD{*(p.kdnn_convolution_prim_.get())});
+                this->post_ops_ = p.post_ops_;
+                this->need_tmp_dst_ = p.need_tmp_dst_;
+                this->dst_size_ = p.dst_size_;
             }
         }
 
@@ -41,8 +45,7 @@ struct kdnn_convolution_fwd_t : public primitive_t {
             const bool ok = is_fwd()
                 && set_default_formats()
                 && !has_zero_dim_memory()
-                && attr()->has_default_values()
-                && with_groups() == false
+                && attr()->has_default_values(primitive_attr_t::skip_mask_t::post_ops)
                 && attr_.set_default_formats(dst_md(0)) == status::success;
             if (!ok) return status::unimplemented;
 
@@ -51,35 +54,27 @@ struct kdnn_convolution_fwd_t : public primitive_t {
             const memory_desc_wrapper dst_d(dst_md());
             const memory_desc_wrapper bias_d(weights_md(1));
 
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(src_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(weights_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(dst_d.data_type()) ||
-                ((bias_d != &glob_zero_md) && !kdnn_utils::is_data_type_supported_by_kdnn(bias_d.data_type()))) {
-                    return status::unimplemented;
-            }
-            if (src_d.ndims() < 1 || src_d.ndims() > 5 ||
-                weights_d.ndims() < 1 || weights_d.ndims() > 5 ||
-                dst_d.ndims() < 1 || dst_d.ndims() > 5 ||
-                ((bias_d != &glob_zero_md) && (bias_d.ndims() < 1 || bias_d.ndims() > 5))) {
-                return status::unimplemented;
-            }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(src_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(weights_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(dst_d) || 
-                ((bias_d != &glob_zero_md) && !kdnn_utils::is_data_layout_supported_by_kdnn(bias_d))) {
-                    return status::unimplemented;
-            }
-
-            if (!kdnn_utils::may_convert_to_kdnn_conv_fwd(src_d,
-                weights_d, dst_d, bias_d, *desc(), desc_.alg_kind)) {
+            auto&& conv_fwd = kdnn_utils::convert_to_kdnn_conv_fwd(src_d,
+                    weights_d, dst_d, bias_d, *desc(), desc_.alg_kind);
+            if (!conv_fwd.first) {
                 return status::unimplemented;
             } else {
-                kdnn_convolution_prim_.reset(kdnn_utils::convert_to_kdnn_conv_fwd(src_d,
-                    weights_d, dst_d, bias_d, *desc(), desc_.alg_kind));
+                kdnn_convolution_prim_.reset(conv_fwd.second);
+                CHECK(post_ops_.init(engine, attr_.post_ops_, dst_md_));
+                if (post_ops_.has_sum()) {
+                    need_tmp_dst_ = true;
+                    dst_size_ = dst_d.nelems() * dst_d.data_type_size();
+                } else {
+                    need_tmp_dst_ = false;
+                    dst_size_ = 0;
+                }
+                return status::success;
             }
-
-            return status::success;
         }
+
+        bool need_tmp_dst_;
+        size_t dst_size_;
+        kdnn_post_ops_t post_ops_;
 
         std::unique_ptr<KDNN::ConvolutionLayerFWD> kdnn_convolution_prim_;
 
@@ -87,11 +82,12 @@ struct kdnn_convolution_fwd_t : public primitive_t {
 
         bool set_default_formats() {
             using namespace format_tag;
-            auto dat_tag = utils::pick(ndims() - 3, ncw, nchw, ncdhw);
+            auto src_tag = utils::pick(ndims() - 3, ncw, nchw, ncdhw);
             auto wei_tag = with_groups()
                     ? utils::pick(ndims() - 3, goiw, goihw, goidhw)
                     : utils::pick(ndims() - 3, oiw, oihw, oidhw);
-            return set_default_formats_common(dat_tag, wei_tag, dat_tag);
+            auto dst_tag = utils::pick(ndims() - 3, ncw, nchw, ncdhw);
+            return set_default_formats_common(src_tag, wei_tag, dst_tag);
         }
 
     }; // pd_t
@@ -103,6 +99,7 @@ struct kdnn_convolution_fwd_t : public primitive_t {
         if (mapper.has_resource(this)) return status::success;
 
         mapper.add(this, std::make_unique<kdnn_convolution_fwd_resource_t>(pd()->kdnn_convolution_prim_));
+        CHECK(pd()->post_ops_.create_resource(engine, mapper));
 
         return status::success;
     }
@@ -118,7 +115,13 @@ private:
         const void *src = CTX_IN_MEM(const void *, DNNL_ARG_SRC);
         const void *wei = CTX_IN_MEM(const void *, DNNL_ARG_WEIGHTS);
         const void *bia = CTX_IN_MEM(const void *, DNNL_ARG_BIAS);
-        void *dst = CTX_OUT_MEM(void *, DNNL_ARG_DST);
+        void *dst;
+
+        if (pd()->need_tmp_dst_) {
+            dst = KDNN::Service::AlignedAlloc(pd()->dst_size_);
+        } else {
+            dst = CTX_OUT_MEM(void *, DNNL_ARG_DST);
+        }
 
         return execute_forward(ctx, src, wei, dst, bia);
     }
@@ -137,6 +140,12 @@ private:
             kdnn_obj.Run(src, wei, dst, bias);
         } catch (const std::exception &e) {
             return status::runtime_error;
+        }
+
+        pd()->post_ops_.execute(ctx, dst);
+
+        if (pd()->need_tmp_dst_) {
+            KDNN::Service::Deallocate(dst);
         }
 
         return status::success;
@@ -172,7 +181,6 @@ struct kdnn_convolution_bwd_data_t : public primitive_t {
             const bool ok = desc()->prop_kind == prop_kind::backward_data
                 && set_default_formats()
                 && !has_zero_dim_memory()
-                && with_groups() == false
                 && attr()->has_default_values();
             if (!ok) return status::unimplemented;
 
@@ -180,31 +188,14 @@ struct kdnn_convolution_bwd_data_t : public primitive_t {
             const memory_desc_wrapper weights_d(weights_md());
             const memory_desc_wrapper diff_src_d(diff_src_md());
 
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(diff_dst_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(weights_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(diff_src_d.data_type())) {
-                    return status::unimplemented;
-            }
-            if (diff_dst_d.ndims() < 1 || diff_dst_d.ndims() > 5 ||
-                weights_d.ndims() < 1 || weights_d.ndims() > 5 ||
-                diff_src_d.ndims() < 1 || diff_src_d.ndims() > 5) {
-                return status::unimplemented;
-            }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(diff_dst_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(weights_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(diff_src_d)) {
-                    return status::unimplemented;
-            }
-
-            if (!kdnn_utils::may_convert_to_kdnn_conv_bwd_data(diff_dst_d,
-                    weights_d, diff_src_d, *desc(), desc_.alg_kind)) {
+            auto&& conv_bwdd = kdnn_utils::convert_to_kdnn_conv_bwd_data(diff_dst_d,
+                    weights_d, diff_src_d, *desc(), desc_.alg_kind);
+            if (!conv_bwdd.first) {
                 return status::unimplemented;
             } else {
-                kdnn_convolution_prim_.reset(kdnn_utils::convert_to_kdnn_conv_bwd_data(diff_dst_d,
-                    weights_d, diff_src_d, *desc(), desc_.alg_kind));
+                kdnn_convolution_prim_.reset(conv_bwdd.second);
+                return status::success;
             }
-
-            return status::success;
         }
 
         std::unique_ptr<KDNN::ConvolutionLayerBWDData> kdnn_convolution_prim_;
@@ -298,40 +289,22 @@ struct kdnn_convolution_bwd_weights_t : public primitive_t {
             const bool ok = desc()->prop_kind == prop_kind::backward_weights
                 && set_default_formats()
                 && !has_zero_dim_memory()
-                && with_groups() == false
                 && attr()->has_default_values();
             if (!ok) return status::unimplemented;
 
             const memory_desc_wrapper diff_dst_d(diff_dst_md());
-            const memory_desc_wrapper src(src_md());
+            const memory_desc_wrapper src_d(src_md());
             const memory_desc_wrapper diff_wei_d(diff_weights_md(0));
             const memory_desc_wrapper diff_bias_d(diff_weights_md(1));
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(diff_dst_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(src.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(diff_wei_d.data_type()) ||
-                ((diff_bias_d != &glob_zero_md) && !kdnn_utils::is_data_type_supported_by_kdnn(diff_bias_d.data_type()))) {
-                    return status::unimplemented;
-            }
-            if (diff_dst_d.ndims() < 1 || diff_dst_d.ndims() > 5 ||
-                src.ndims() < 1 || src.ndims() > 5 ||
-                diff_wei_d.ndims() < 1 || diff_wei_d.ndims() > 5 ||
-                ((diff_bias_d != &glob_zero_md) && (diff_bias_d.ndims() < 1 || diff_bias_d.ndims() > 5))) {
-                return status::unimplemented;
-            }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(diff_dst_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(src) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(diff_wei_d) ||
-                ((diff_bias_d != &glob_zero_md) && (!kdnn_utils::is_data_layout_supported_by_kdnn(diff_bias_d)))) {
-                    return status::unimplemented;
-            }
-            if (!kdnn_utils::may_convert_to_kdnn_conv_bwd_weights(diff_dst_d,
-                    src, diff_wei_d, diff_bias_d, *desc(), desc_.alg_kind)) {
+
+            auto&& conv_bwdw = kdnn_utils::convert_to_kdnn_conv_bwd_weights(diff_dst_d,
+                    src_d, diff_wei_d, diff_bias_d, *desc(), desc_.alg_kind);
+            if (!conv_bwdw.first) {
                 return status::unimplemented;
             } else {
-                kdnn_convolution_prim_.reset(kdnn_utils::convert_to_kdnn_conv_bwd_weights(diff_dst_d,
-                    src, diff_wei_d, diff_bias_d, *desc(), desc_.alg_kind));
+                kdnn_convolution_prim_.reset(conv_bwdw.second);
+                return status::success;
             }
-            return status::success;
         }
 
         std::unique_ptr<KDNN::ConvolutionLayerBWDWeights> kdnn_convolution_prim_;
