@@ -3,7 +3,7 @@
 #include "common/type_helpers.hpp"
 #include "common/utils.hpp"
 
-#include "cpu/aarch64/kdnn/kdnn_jit_sve_convolution.hpp"
+#include "cpu/aarch64/kdnn/jit/kdnn_jit_sve_convolution.hpp"
 
 namespace dnnl {
 namespace impl {

@@ -8,7 +8,7 @@
 
 #include "cpu/cpu_convolution_pd.hpp"
 #include "cpu/aarch64/kdnn/kdnn_utils.hpp"
-#include "cpu/aarch64/kdnn/kdnn_jit_sve_conv_kernel.hpp"
+#include "cpu/aarch64/kdnn/jit/kdnn_jit_sve_conv_kernel.hpp"
 
 namespace dnnl {
 namespace impl {
