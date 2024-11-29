@@ -44,44 +44,31 @@ struct kdnn_prelu_fwd_t : public primitive_t {
 
             if (!ok) return status::unimplemented;
 
-            using namespace format_tag;
-            auto src_tag = memory_desc_matches_one_of_tag(src_md_, ndhwc, ncdhw, nchw, nhwc, nwc, ncw, nc, x);
-            auto wei_tag = memory_desc_matches_one_of_tag(weights_md_, src_tag);
-            if (utils::one_of(format_tag::undef, src_tag, wei_tag)) {
-                // Unsupported memory layout
-                return dnnl::impl::status::unimplemented;
+            auto&& first_non_any_md = kdnn_utils::get_first_non_any_format_kind(src_md_, weights_md_);
+            auto&& layout = kdnn_utils::get_layout(first_non_any_md);
+            if (src_md_.format_kind == format_kind::any) {
+                CHECK(memory_desc_init_by_tag(src_md_, layout));
+                CHECK(memory_desc_init_by_tag(dst_md_, layout));
+            }
+            if (weights_md_.format_kind == format_kind::any) {
+                CHECK(memory_desc_init_by_tag(weights_md_, layout));
             }
 
             const memory_desc_wrapper src_d(&src_md_);
             const memory_desc_wrapper wei_d(&weights_md_);
             const memory_desc_wrapper dst_d(&dst_md_);
-
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(src_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(wei_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(dst_d.data_type())) {
-                    return status::unimplemented;
-            }
-            if (src_d.ndims() < 1 || src_d.ndims() > 5 ||
-                wei_d.ndims() < 1 || wei_d.ndims() > 5 ||
-                dst_d.ndims() < 1 || dst_d.ndims() > 5) {
-                return status::unimplemented;
-            }
-            // Check only src and dst layouts, because layout wei must be equal to layout src.
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(src_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(dst_d)) {
-                    return status::unimplemented;
-            }
-            if (!kdnn_utils::may_convert_to_kdnn_prelu(src_d, wei_d, dst_d)) {
+            auto&& prelu_fwd = kdnn_utils::convert_to_kdnn_prelu(src_d, wei_d, dst_d);
+            if (!prelu_fwd.first) {
                 return status::unimplemented;
             } else {
-                kdnn_prelu_prim_.reset(kdnn_utils::convert_to_kdnn_prelu(src_d, wei_d, dst_d));
+                kdnn_prelu_prim_.reset(prelu_fwd.second);
+                return status::success;
             }
-
-            return status::success;
         }
 
         std::unique_ptr<KDNN::PReLULayerFWD> kdnn_prelu_prim_;
         
+        friend struct kdnn_post_ops_t;
     }; // pd_t
 
     kdnn_prelu_fwd_t(const pd_t *kpd) : primitive_t(kpd) {}
@@ -128,6 +115,8 @@ private:
     }
 
     const pd_t *pd() const { return (const pd_t *)primitive_t::pd().get(); }
+
+    friend struct kdnn_post_ops_t;
 }; // kdnn_prelu_fwd_t
 
 struct kdnn_prelu_bwd_resource_t : public resource_t {
@@ -157,14 +146,18 @@ struct kdnn_prelu_bwd_t : public primitive_t {
         status_t init(engine_t *engine) {
             const bool ok = !is_fwd() && set_default_formats()
                         && attr()->has_default_values();
+            if (!ok) return status::unimplemented;
 
-            using namespace format_tag;
-            auto src_tag = memory_desc_matches_one_of_tag(src_md_, ndhwc, ncdhw, nchw, nhwc, nwc, ncw, nc, x);
-            auto wei_tag = memory_desc_matches_one_of_tag(weights_md_, src_tag);
-            auto diff_wei_tag = memory_desc_matches_one_of_tag(diff_weights_md_, src_tag);
-            if (utils::one_of(format_tag::undef, src_tag, wei_tag, diff_wei_tag)) {
-                // Unsupported memory layout
-                return dnnl::impl::status::unimplemented;
+            auto&& first_non_any_md = kdnn_utils::get_first_non_any_format_kind(src_md_, weights_md_);
+            auto&& layout = kdnn_utils::get_layout(first_non_any_md);
+            if (src_md_.format_kind == format_kind::any) {
+                CHECK(memory_desc_init_by_tag(src_md_, layout));
+                CHECK(memory_desc_init_by_tag(diff_src_md_, layout));
+                CHECK(memory_desc_init_by_tag(diff_dst_md_, layout));
+            }
+            if (weights_md_.format_kind == format_kind::any) {
+                CHECK(memory_desc_init_by_tag(weights_md_, layout));
+                CHECK(memory_desc_init_by_tag(diff_weights_md_, layout));
             }
 
             const memory_desc_wrapper src_d(src_md());
@@ -172,36 +165,13 @@ struct kdnn_prelu_bwd_t : public primitive_t {
             const memory_desc_wrapper wei_d(weights_md());
             const memory_desc_wrapper diff_wei_d(diff_weights_md());
             const memory_desc_wrapper diff_dst_d(diff_dst_md());
-
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(src_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(diff_src_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(wei_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(diff_wei_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(diff_dst_d.data_type())) {
-                return status::unimplemented;
-            }
-            if (src_d.ndims() < 1 || src_d.ndims() > 5 ||
-                diff_src_d.ndims() < 1 || diff_src_d.ndims() > 5 ||
-                wei_d.ndims() < 1 || wei_d.ndims() > 5 ||
-                diff_wei_d.ndims() < 1 || diff_wei_d.ndims() > 5 ||
-                diff_dst_d.ndims() < 1 || diff_dst_d.ndims() > 5) {
-                return status::unimplemented;
-            }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(src_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(diff_src_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(diff_dst_d)) {
-                    return status::unimplemented;
-            }
-            if (!kdnn_utils::may_convert_to_kdnn_prelu(src_d, diff_src_d, wei_d, diff_wei_d, diff_dst_d)) {
+            auto&& prelu_bwd = kdnn_utils::convert_to_kdnn_prelu(src_d, diff_src_d, wei_d, diff_wei_d, diff_dst_d);
+            if (!prelu_bwd.first) {
                 return status::unimplemented;
             } else {
-                kdnn_prelu_prim_.reset(kdnn_utils::convert_to_kdnn_prelu(src_d,
-                    diff_src_d, wei_d, diff_wei_d, diff_dst_d));
+                kdnn_prelu_prim_.reset(prelu_bwd.second);
+                return status::success;
             }
-
-            if (!ok) return status::unimplemented;
-
-            return status::success;
         }
 
         std::unique_ptr<KDNN::PReLULayerBWD> kdnn_prelu_prim_;
