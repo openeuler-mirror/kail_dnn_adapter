@@ -32,7 +32,9 @@ struct kdnn_reduction_t : public primitive_t {
         pd_t(const pd_t& p) : cpu_reduction_pd_t(p) {
             if (p.kdnn_reduction_prim_) {
                 this->kdnn_reduction_prim_.reset(new KDNN::ReductionLayer{*(p.kdnn_reduction_prim_.get())});
-                this->post_ops = p.post_ops;
+                this->post_ops_ = p.post_ops_;
+                this->need_tmp_dst_ = p.need_tmp_dst_;
+                this->dst_size_ = p.dst_size_;
             }
         }
 
@@ -44,40 +46,28 @@ struct kdnn_reduction_t : public primitive_t {
                     && attr_.set_default_formats(dst_md(0)) == status::success;
             if (!ok) return status::unimplemented;
 
-            using namespace format_tag;
-            auto src_tag = memory_desc_matches_one_of_tag(src_md_, ndhwc, ncdhw, nchw, nhwc, nwc, ncw, nc, x);
-            auto dst_tag = memory_desc_matches_one_of_tag(dst_md_, src_tag);
-            if (utils::one_of(format_tag::undef, src_tag, dst_tag)) {
-                // Unsupported memory layout
-                return dnnl::impl::status::unimplemented;
-            }
-
             const memory_desc_wrapper src_d(src_md());
             const memory_desc_wrapper dst_d(dst_md());
-
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(src_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(dst_d.data_type())) {
-                    return status::unimplemented;
-            }
-            if (src_d.ndims() < 1 || src_d.ndims() > 5 ||
-                dst_d.ndims() < 1 || dst_d.ndims() > 5) {
-                return status::unimplemented;
-            }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(src_d)) {
-                    return status::unimplemented;
-            }
-            if (!kdnn_utils::may_convert_to_kdnn_reduction(src_d, dst_d, desc_.alg_kind)) {
+            auto&& reduction = kdnn_utils::convert_to_kdnn_reduction(src_d, dst_d, desc_.alg_kind, desc_.p, desc_.eps);
+            if (!reduction.first) {
                 return status::unimplemented;
             } else {
-                kdnn_reduction_prim_.reset(kdnn_utils::convert_to_kdnn_reduction(src_d, dst_d, desc_.alg_kind));
+                kdnn_reduction_prim_.reset(reduction.second);
+                CHECK(post_ops_.init(engine, attr_.post_ops_, dst_md_));
+                if (post_ops_.has_sum()) {
+                    need_tmp_dst_ = true;
+                    dst_size_ = dst_d.nelems() * dst_d.data_type_size();
+                } else {
+                    need_tmp_dst_ = false;
+                    dst_size_ = 0;
+                }
+                return status::success;
             }
-
-            CHECK(post_ops.init(engine, attr_.post_ops_, dst_md_));
-
-            return status::success;
         }
 
-        kdnn_post_ops_t post_ops;
+        bool need_tmp_dst_;
+        size_t dst_size_;
+        kdnn_post_ops_t post_ops_;
 
         std::unique_ptr<KDNN::ReductionLayer> kdnn_reduction_prim_;
 
@@ -90,7 +80,7 @@ struct kdnn_reduction_t : public primitive_t {
         if (mapper.has_resource(this)) return status::success;
 
         mapper.add(this, std::make_unique<kdnn_reduction_resource_t>(pd()->kdnn_reduction_prim_));
-        CHECK(pd()->post_ops.create_resource(engine, mapper));
+        CHECK(pd()->post_ops_.create_resource(engine, mapper));
 
         return status::success;
     }
@@ -104,7 +94,13 @@ private:
 
     status_t execute_forward(const exec_ctx_t &ctx) const {
         const void *src = CTX_IN_MEM(const void *, DNNL_ARG_SRC);
-        void *dst = CTX_OUT_MEM(void *, DNNL_ARG_DST);
+        void *dst;
+
+        if (pd()->need_tmp_dst_) {
+            dst = KDNN::Service::AlignedAlloc(pd()->dst_size_);
+        } else {
+            dst = CTX_OUT_MEM(void *, DNNL_ARG_DST);
+        }
 
         return execute_forward(ctx, src, dst);
     }
@@ -123,7 +119,11 @@ private:
             return status::runtime_error;
         }
 
-        pd()->post_ops.execute(ctx, dst);
+        pd()->post_ops_.execute(ctx, dst);
+
+        if (pd()->need_tmp_dst_) {
+            KDNN::Service::Deallocate(dst);
+        }
 
         return status::success;
     }

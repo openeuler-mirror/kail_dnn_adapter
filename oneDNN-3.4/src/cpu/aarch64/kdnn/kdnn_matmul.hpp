@@ -6,6 +6,8 @@
 #include "common/utils.hpp"
 #include "cpu/aarch64/kdnn/kdnn_utils.hpp"
 #include "cpu/aarch64/kdnn/kdnn_post_ops.hpp"
+#include "cpu/cpu_primitive.hpp"
+#include "cpu/scale_utils.hpp"
 
 namespace dnnl {
 namespace impl {
@@ -33,72 +35,76 @@ struct kdnn_matmul_t : public primitive_t {
         pd_t(const pd_t& p) : cpu_matmul_pd_t(p) {
             if (p.kdnn_matmul_prim_) {
                 this->kdnn_matmul_prim_.reset(new KDNN::Gemm<KDNN::GemmPack::NO_PACK>{*(p.kdnn_matmul_prim_.get())});
-                this->post_ops = p.post_ops;
+                this->post_ops_ = p.post_ops_;
+                this->need_tmp_dst_ = p.need_tmp_dst_;
+                this->dst_size_ = p.dst_size_;
             }
         }
 
         DECLARE_COMMON_PD_T("kdnn", kdnn_matmul_t);
         
         status_t init(engine_t *engine) {
+            VDISPATCH_MATMUL(set_default_formats(), VERBOSE_UNSUPPORTED_TAG);
+
+            bool ok = !has_zero_dim_memory() &&
+                attr()->has_default_values(dnnl_primitive_attr::skip_mask_t::post_ops |
+                    dnnl_primitive_attr::skip_mask_t::scales_runtime) &&
+                attr_scales_ok() &&
+                (attr()->output_scales_.mask_ == 0) &&
+                (attr()->scales_.get(DNNL_ARG_WEIGHTS).mask_ == 0) &&
+                !has_runtime_dims_or_strides();
+            if (!ok) return status::unimplemented;
+
             const memory_desc_wrapper src_d(&src_md_);
             const memory_desc_wrapper wei_d(&weights_md_);
             const memory_desc_wrapper dst_d(&dst_md_);
             const memory_desc_wrapper bias_d(&bias_md_);
-
-            VDISPATCH_MATMUL(set_default_formats(), VERBOSE_UNSUPPORTED_TAG);
-
-            bool ok = !has_zero_dim_memory() &&
-                attr()->has_default_values(dnnl_primitive_attr::skip_mask_t::oscale |
-                dnnl_primitive_attr::skip_mask_t::post_ops) &&
-                attr_scales_ok() &&
-                (attr()->output_scales_.mask_ == 0) &&
-                !has_runtime_dims_or_strides();
-
-            if (!ok) return status::unimplemented;
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(src_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(wei_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(dst_d.data_type())) {
-                    return status::unimplemented;
-            }
-            if (src_d.ndims() < 1 || src_d.ndims() > 5 ||
-                wei_d.ndims() < 1 || wei_d.ndims() > 5 ||
-                dst_d.ndims() < 1 || dst_d.ndims() > 5) {
+            auto&& matmul = kdnn_utils::convert_to_kdnn_gemm(src_d, wei_d, dst_d, bias_d);
+            if (!matmul.first) {
                 return status::unimplemented;
-            }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(src_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(wei_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(dst_d)) {
-                    return status::unimplemented;
-            }
-            if (with_bias()) {
-                if (!kdnn_utils::is_data_type_supported_by_kdnn(bias_d.data_type())) {
-                    return status::unimplemented;
-                }
-                if (bias_d.ndims() < 1 || bias_d.ndims() > 5) {
-                    return status::unimplemented;
-                }
-                if (!kdnn_utils::is_data_layout_supported_by_kdnn(bias_d)) {
-                    return status::unimplemented;
-                }
-                if (!kdnn_utils::may_convert_to_kdnn_gemm(src_d, wei_d, dst_d, bias_d)) {
-                    return status::unimplemented;
-                } else {
-                    kdnn_matmul_prim_.reset(kdnn_utils::convert_to_kdnn_gemm(src_d, wei_d, dst_d, bias_d));
-                }
             } else {
-                if (!kdnn_utils::may_convert_to_kdnn_gemm(src_d, wei_d, dst_d)) {
-                    return status::unimplemented;
+                kdnn_matmul_prim_.reset(matmul.second);
+                CHECK(post_ops_.init(engine, attr_.post_ops_, dst_md_));
+                if (post_ops_.has_sum()) {
+                    need_tmp_dst_ = true;
+                    dst_size_ = dst_d.nelems() * dst_d.data_type_size();
                 } else {
-                    kdnn_matmul_prim_.reset(kdnn_utils::convert_to_kdnn_gemm(src_d, wei_d, dst_d));
+                    need_tmp_dst_ = false;
+                    dst_size_ = 0;
                 }
+                return status::success;
             }
-
-            CHECK(post_ops.init(engine, attr_.post_ops_, dst_md_));
-
-            return status::success;
         }
 
-        kdnn_post_ops_t post_ops;
+        bool attr_scales_ok(
+                const std::vector<int> &supported_args = {DNNL_ARG_SRC,
+                        DNNL_ARG_WEIGHTS}) const override {
+            if (attr()->scales_.has_default_values()) return true;
+
+            bool ok = attr()->scales_.has_default_values(supported_args);
+            for (int arg : supported_args) {
+                const auto &sc = attr()->scales_.get(arg);
+                const auto &mask = sc.mask_;
+                if (!sc.has_default_values()) {
+                    if (arg == DNNL_ARG_WEIGHTS) {
+                        ok = ok
+                                && utils::one_of(mask, 0, wei_qmask_N(),
+                                        wei_qmask_N() + wei_qmask_K());
+                        ok = ok && utils::one_of(sc.ndims_, 0, 2)
+                                && IMPLICATION(sc.ndims_ == 2,
+                                        sc.group_dims_[1] == 1
+                                                && K() % sc.group_dims_[0]
+                                                        == 0);
+                    } else
+                        ok = ok && (mask == 0);
+                }
+            }
+            return ok;
+        }
+
+        bool need_tmp_dst_;
+        size_t dst_size_;
+        kdnn_post_ops_t post_ops_;
         
         std::unique_ptr<KDNN::Gemm<KDNN::GemmPack::NO_PACK>> kdnn_matmul_prim_;
 
@@ -111,7 +117,7 @@ struct kdnn_matmul_t : public primitive_t {
         if (mapper.has_resource(this)) return status::success;
 
         mapper.add(this, std::make_unique<kdnn_matmul_resource_t>(pd()->kdnn_matmul_prim_));
-        CHECK(pd()->post_ops.create_resource(engine, mapper));
+        CHECK(pd()->post_ops_.create_resource(engine, mapper));
 
         return status::success;
     }
@@ -126,8 +132,14 @@ private:
     status_t execute_forward(const exec_ctx_t &ctx) const {
         const void *src = CTX_IN_MEM(const void *, DNNL_ARG_SRC);
         const void *wei = CTX_IN_MEM(const void *, DNNL_ARG_WEIGHTS);
-        void *dst = CTX_OUT_MEM(void *, DNNL_ARG_DST);
         const void *bias = CTX_IN_MEM(const void *, DNNL_ARG_BIAS);
+        void *dst;
+
+        if (pd()->need_tmp_dst_) {
+            dst = KDNN::Service::AlignedAlloc(pd()->dst_size_);
+        } else {
+            dst = CTX_OUT_MEM(void *, DNNL_ARG_DST);
+        }
 
         return execute_forward(ctx, src, wei, dst, bias);
     }
@@ -142,12 +154,26 @@ private:
             (ctx.get_resource_mapper()->get<kdnn_matmul_resource_t>(this))->get_kdnn_obj();
 
         try {
-            kdnn_obj.Run(src, wei, dst, bias);
+            DEFINE_ARG_SCALES_BUFFER(src_scales, DNNL_ARG_SRC);
+            DEFINE_ARG_SCALES_BUFFER(wei_scales, DNNL_ARG_WEIGHTS);
+
+            auto scratchpad = ctx.get_scratchpad_grantor();
+            
+            const int ndims = pd()->ndims();
+            const auto dst_d = ctx.memory_mdw(DNNL_ARG_DST, pd()->dst_md());
+            const float *scales = precompute_scales(scratchpad, src_scales, wei_scales,
+                    dst_d.dims()[ndims - 1], pd()->attr());
+
+            kdnn_obj.Run(src, wei, dst, bias, scales[0], 0.0f);
         } catch (const std::exception &e) {
             return status::runtime_error;
         }
 
-        pd()->post_ops.execute(ctx, dst);
+        pd()->post_ops_.execute(ctx, dst);
+
+        if (pd()->need_tmp_dst_) {
+            KDNN::Service::Deallocate(dst);
+        }
 
         return status::success;
     }
