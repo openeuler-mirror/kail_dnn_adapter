@@ -37,32 +37,18 @@ struct kdnn_softmax_fwd_t : public primitive_t {
         DECLARE_COMMON_PD_T("kdnn", kdnn_softmax_fwd_t);
 
         status_t init(engine_t *engine) {
-            const memory_desc_wrapper src_d(src_md());
-            const memory_desc_wrapper dst_d(dst_md());
-            // [TODO]: check if those checks are necessary
-            bool ok = is_fwd() && !(is_logsoftmax()) && attr()->has_default_values() && (set_default_formats() == status::success);
-            
+            bool ok = is_fwd() && attr()->has_default_values() && (set_default_formats() == status::success);
             if (!ok) return status::unimplemented;
 
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(src_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(dst_d.data_type())) {
-                    return status::unimplemented;
-            }
-            if (src_d.ndims() < 1 || src_d.ndims() > 5 ||
-                dst_d.ndims() < 1 || dst_d.ndims() > 5) {
-                return status::unimplemented;
-            }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(src_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(dst_d)) {
-                    return status::unimplemented;
-            }
-            if (!kdnn_utils::may_convert_to_kdnn_softmax(src_d, dst_d, axis())) {
+            const memory_desc_wrapper src_d(src_md());
+            const memory_desc_wrapper dst_d(dst_md());
+            auto&& softmax_fwd = kdnn_utils::convert_to_kdnn_softmax(src_d, dst_d, axis(), is_logsoftmax());
+            if (!softmax_fwd.first) {
                 return status::unimplemented;
             } else {
-                kdnn_softmax_prim_.reset(kdnn_utils::convert_to_kdnn_softmax(src_d, dst_d, axis()));
+                kdnn_softmax_prim_.reset(softmax_fwd.second);
+                return status::success;
             }
-
-            return status::success;
         }
         std::unique_ptr<KDNN::SoftmaxLayerFWD> kdnn_softmax_prim_;
     };
@@ -139,36 +125,19 @@ struct kdnn_softmax_bwd_t : public primitive_t {
         DECLARE_COMMON_PD_T("kdnn", kdnn_softmax_bwd_t);
 
         status_t init(engine_t *engine) {
+            bool ok = !is_fwd() && attr()->has_default_values() && (set_default_formats() == status::success);
+            if (!ok) return status::unimplemented;
+
             const memory_desc_wrapper dst_d(dst_md());
             const memory_desc_wrapper diff_dst_d(diff_dst_md());
             const memory_desc_wrapper diff_src_d(diff_src_md());
-
-            bool ok = !is_fwd() && !(is_logsoftmax()) && attr()->has_default_values() && (set_default_formats() == status::success);
-            
-            if (!ok) return status::unimplemented;
-
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(dst_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(diff_dst_d.data_type()) ||
-                !kdnn_utils::is_data_type_supported_by_kdnn(diff_src_d.data_type())) {
-                    return status::unimplemented;
-            }
-            if (dst_d.ndims() < 1 || dst_d.ndims() > 5 ||
-                diff_dst_d.ndims() < 1 || diff_dst_d.ndims() > 5 ||
-                diff_src_d.ndims() < 1 || diff_src_d.ndims() > 5) {
-                return status::unimplemented;
-            }
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(dst_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(diff_dst_d) ||
-                !kdnn_utils::is_data_layout_supported_by_kdnn(diff_src_d)) {
-                    return status::unimplemented;
-            }
-            if (!kdnn_utils::may_convert_to_kdnn_softmax(dst_d, diff_dst_d, diff_src_d, axis())) {
+            auto&& softmax_bwd = kdnn_utils::convert_to_kdnn_softmax(dst_d, diff_dst_d, diff_src_d, axis(), is_logsoftmax());
+            if (!softmax_bwd.first) {
                 return status::unimplemented;
             } else {
-                kdnn_softmax_prim_.reset(kdnn_utils::convert_to_kdnn_softmax(dst_d, diff_dst_d, diff_src_d, axis()));
+                kdnn_softmax_prim_.reset(softmax_bwd.second);
+                return status::success;
             }
-
-            return status::success;
         }
         std::unique_ptr<KDNN::SoftmaxLayerBWD> kdnn_softmax_prim_;
     };
