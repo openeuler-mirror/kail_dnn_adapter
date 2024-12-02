@@ -41,37 +41,22 @@ struct kdnn_sum_t : public primitive_t {
                 if (!ok) return status::unimplemented;
 
             const memory_desc_wrapper dst_d(dst_md());
-            if (!kdnn_utils::is_data_type_supported_by_kdnn(dst_d.data_type())) {
-                return status::unimplemented;
-            }
-            
-            if (dst_d.ndims() < 1 || dst_d.ndims() > 5) {
-                return status::unimplemented;
-            }
-
-            if (!kdnn_utils::is_data_layout_supported_by_kdnn(dst_d)) {
-                return status::unimplemented;
-            }
 
             const int n = n_inputs();
             std::vector<memory_desc_wrapper> src_vec_d;
             for (int i = 0; i < n; ++i) {
                 const memory_desc_wrapper src_i_d(src_md(i));
-                bool ok = kdnn_utils::is_data_type_supported_by_kdnn(src_i_d.data_type())
-                     && src_i_d.ndims() >= 1 && src_i_d.ndims() <= 5
-                     && kdnn_utils::is_data_layout_supported_by_kdnn(src_i_d);
-                if (!ok) return status::unimplemented;
                 src_vec_d.push_back(src_i_d);
             }
 
             const float *scl = scales();
-            if (!kdnn_utils::may_convert_to_kdnn_sum(src_vec_d, scl, dst_d)) {
+            auto&& sum = kdnn_utils::convert_to_kdnn_sum(src_vec_d, scl, dst_d);
+            if (!sum.first) {
                 return status::unimplemented;
             } else {
-                kdnn_sum_prim_.reset(kdnn_utils::convert_to_kdnn_sum(src_vec_d, scl, dst_d));
+                kdnn_sum_prim_.reset(sum.second);
+                return status::success;
             }
-
-            return status::success;
         }
 
         std::unique_ptr<KDNN::SumLayer> kdnn_sum_prim_;
